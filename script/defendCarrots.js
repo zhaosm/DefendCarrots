@@ -119,7 +119,8 @@ class Bottle extends Tower{
         this.src.rotation = 90 + degree;
         let bullet = new Bullet(1, center, targetCenter);
         bullets.push(bullet);
-        container.addChild(bullet.src);
+        // let index = container.getChildIndex(this.src);
+        container.addChildAt(bullet.src, container.getChildIndex(this.src));
     }
 }
 
@@ -127,18 +128,19 @@ class Monster {
     constructor(type) {
         let monstersrc = queue.getResult('monster');
         this.blood = 1;
-        let bloodHeight = monstersrc.height / 5;
-        let bloodDist = monstersrc.height / 5;
-        let totalHeight = monstersrc.height + bloodDist + bloodHeight;
+        this.bloodColor = "#21ff3a";
+        this.bloodHeight = monstersrc.height / 5;
+        this.bloodDist = monstersrc.height / 5;
+        let totalHeight = monstersrc.height + this.bloodDist + this.bloodHeight;
         let dy = totalHeight - cellHeight / 2;
         let monster = new createjs.Bitmap(monstersrc);
         monster.x = 0;
         // relative y corresponding to the monster-container
-        monster.y = bloodDist + bloodHeight;
+        monster.y = this.bloodDist + this.bloodHeight;
         monster.name = 'monster';
         // relative y corresponding to the monster-container
         let blood = new createjs.Shape();
-        blood.graphics.beginFill("#21ff3a").drawRect(0, 0, monster.image.width, bloodHeight);
+        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monster.image.width, this.bloodHeight);
         blood.name = 'blood';
         // monster-container
         this.src = new createjs.Container();
@@ -156,6 +158,14 @@ class Monster {
             .to({y: getTerrainCellCenter(land[7].row, land[7].col).y - dy}, 1000)
             .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[8].row, land[8].col), monstersrc.width, totalHeight).x}, 1000);
     }
+    updateBlood() {
+        if (this.blood < 0) this.blood = 0;
+        this.src.removeChild(this.src.getChildByName('blood'));
+        let blood = new createjs.Shape();
+        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.src.getChildByName('monster').image.width * this.blood, this.bloodHeight);
+        blood.name = 'blood';
+        this.src.addChild(blood);
+    }
 }
 
 class Bullet {
@@ -166,11 +176,16 @@ class Bullet {
         this.src.x = leftTop.x;// + this.src.image.width / 2;
         this.src.y = leftTop.y;// - this.src.image.height / 2;
         this.speed = backgroundWidth;// per second
+        this.attack = 0.25;
         this.targetCenter = targetCenter;
-        let targetLeftTop = getLeftTopCoorinate(targetCenter, this.src.image.width, this.src.image.height);
-        let time = 1000 * eucDistance(this.src.x, this.src.y, targetLeftTop.x, targetLeftTop.y) / this.speed;
+        // let targetLeftTop = getLeftTopCoorinate(targetCenter, this.src.image.width, this.src.image.height);
+        let tmpDist = eucDistance(center.x, center.y, targetCenter.x, targetCenter.y);
+        let dist = eucDistance(0, 0, backgroundWidth, backgroundHeight);
+        let time = 1000 * dist / this.speed;
+        let destCenter = {x: center.x + (targetCenter.x - center.x) * dist / tmpDist, y: center.y + (targetCenter.y - center.y) * dist / tmpDist};
+        let destLeftTop = getLeftTopCoorinate(destCenter, this.src.image.width, this.src.image.height);
         createjs.Tween.get(this.src, {loop: false})
-            .to({x: targetLeftTop.x, y: targetLeftTop.y}, time);
+            .to({x: destLeftTop.x, y: destLeftTop.y}, time);
     }
 }
 
@@ -258,9 +273,12 @@ function updateMonsters() {
     * 生成怪物
     */
     monsterTimer++;
-    if (monsterTimer === 60 || monsterTimer % 100 === 0) generateMonster();
+    if (monsterTimer === 60 || monsterTimer % 300 === 0) generateMonster();
     for (let i = 0;i < monsters.length;) {
         // monster[i].src: the container containing monster bitmap and blood
+        // update blood
+        monsters[i].updateBlood();
+
         let monster = monsters[i].src.getChildByName('monster');
         let pt = monsters[i].src.localToLocal(monster.x, monster.y, container);
         let monsterCell = calCell(pt.x, pt.y);
@@ -316,6 +334,7 @@ function updateBullets() {
                 let dx = bullets[i].src.x - monsterpt.x;
                 let dy = bullets[i].src.y - monsterpt.y;
                 if (dx >= -bullets[i].src.image.width && dx <= monster.image.width && dy >= -bullets[i].src.image.height && dy <= monster.image.height) {
+                    closest.blood -= bullets[i].attack;
                     container.removeChild(bullets[i].src);
                     bullets.splice(i, 1);
                     continue;
