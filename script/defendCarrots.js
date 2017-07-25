@@ -124,6 +124,45 @@ class Bottle extends Tower{
     }
 }
 
+class Sun extends Tower {
+    constructor(center, ...args) {
+        super(...args);
+        let sunIcon = queue.getResult('sunIcon');
+        this.icon = new createjs.Bitmap(sunIcon);
+        let spriteSheetImg = queue.getResult('sunSpriteSheet');
+        let data = {
+            images: [spriteSheetImg],
+            frames: [
+                [1, 1, 301, 301],
+                [304, 1, 301, 301],
+                [607, 1, 301, 301],
+                [910, 1, 301, 301],
+                [1213, 1, 301, 301]
+            ],
+            animations: {
+                level1: {
+                    frames: [0, 1, 2, 3, 4],
+                    speed: .3
+                }
+            }
+        };
+        this.spriteSheet = new createjs.SpriteSheet(data);
+        // let leftTop = getLeftTopCoorinate(center, this.icon.image.width, this.icon.image.height);
+        this.icon.regX = this.icon.image.width / 2;
+        this.icon.regY = this.icon.image.height / 2;
+        this.icon.x = center.x;
+        this.icon.y = center.y;
+        this.radius = spriteSheetImg.width / 10;
+    }
+    fire() {
+        let animation = new createjs.Sprite(this.spriteSheet, 'level1');
+        animation.regX = animation.regY = this.radius;
+        animation.x = this.icon.x;
+        animation.y = this.icon.y;
+        container.addChild(animation);
+    }
+}
+
 class Monster {
     constructor(type) {
         let monstersrc = queue.getResult('monster');
@@ -197,7 +236,9 @@ function init() {
         {src: 'image/monster.png', id: 'monster'},
         {src: 'image/bottle.png', id: 'bottle'},
         {src: 'image/bottleBullet.png', id: 'bottleBullet'},
-        {src: 'image/carrot.png', id: 'carrot'}
+        {src: 'image/carrot.png', id: 'carrot'},
+        {src: 'image/sunSpriteSheet.png', id: 'sunSpriteSheet'},
+        {src: 'image/sunIcon.png', id: 'sunIcon'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
@@ -294,12 +335,17 @@ function updateTowers() {
     /*
     * 找怪物，产生子弹*/
     towerTimer++;
-    if (towerTimer % 20 === 0) {
+    if (towerTimer % 400 === 0) {
         for (let tower of towers) {
-            tower.fire(tower.findTarget(monsters, getCenterCoordinate({
-                x: carrot.x,
-                y: carrot.y
-            }, carrot.image.width, carrot.image.height)));
+            if (tower.constructor.name === 'Bottle') {
+                tower.fire(tower.findTarget(monsters, getCenterCoordinate({
+                    x: carrot.x,
+                    y: carrot.y
+                }, carrot.image.width, carrot.image.height)));
+            }
+            else if (tower.constructor.name === 'Sun') {
+                tower.fire();
+            }
         }
     }
 }
@@ -412,28 +458,28 @@ function generateTerrain() {
 
 // event handlers
 function tryBuidingTower(event) {
-    // alert("clicked background");
     let x = event.stageX, y = event.stageY;
-    // for (let point of land) {
-    //     if (Math.abs(x - point.x * realBackgroundWidth) < realLandWidth / 2 || Math.abs(y - point.y * realBackgroundHeight) < realLandWidth / 2) return;
-    // }
-    // let bottlesrc = queue.getResult('bottle');
-    // let realBottleWidth = bottlesrc.width * scaleFactor;
-    // let realBottleHeight = bottlesrc.height * scaleFactor;
-    // let bottle = new createjs.Bitmap(bottlesrc);
-    // modifyScale(bottle, scaleFactor);
-    // bottle.x = x - realBottleWidth / 2;
-    // bottle.y = y - realBottleHeight / 2;
-    // bottles.push(bottle);
-    // container.addChild(bottle);
     let cell = calCell(x, y);
     if (isValidCell(cell.row, cell.col) && terrain[cell.row][cell.col].status === 'available') {
         let center = getTerrainCellCenter(cell.row, cell.col);
-        let bottle = new Bottle(center);
-        towers.push(bottle);
-        container.addChild(bottle.src);
+        // bottle
+        // let bottle = new Bottle(center);
+        // towers.push(bottle);
+        // container.addChild(bottle.src);
+
+        // sun
+        let sun = new Sun(center);
+        towers.push(sun);
+        container.addChild(sun.icon);
+
+        // set cell status
         terrain[cell.row][cell.col].status = 'unavailable';
     }
+
+}
+
+function generateSun() {
+
 }
 
 // calculations
