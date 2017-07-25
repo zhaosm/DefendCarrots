@@ -61,8 +61,28 @@ let terrain = [];
 //     {x: 0.88, y: 0.31},
 //     {x: 0.37, y: 0.31}
 // ];
+const carrotData = {
+    images:['image/test.png'],
+    frames:{width:26, height:40, count:12, regX:0, regY:0},
+//创建动画，动画的名字，以及对应"frames"列表中的哪些帧，也有两种方法
+    animations:{
+        // start, end, next, speed
+        "run": [0, 11, "run",0.1],
+    }
+};
+
 
 // classes
+class Carrot {
+    constructor() {
+        this.move = new createjs.SpriteSheet(carrotData);
+        //SpriteSheet类设置帧和动画,里面的run为开始的动画
+        this.src = new createjs.Sprite(this.move,"run");
+        this.height = 100;
+        this.width = 100;
+    }
+}
+
 class Tower {
     constructor() {
         this.src = null;
@@ -182,12 +202,6 @@ function showStage() {
     cellHeight = (terrainBound.leftBottom.y - terrainBound.leftTop.y) / row * backgroundHeight;
     generateTerrain();
     scaleFactor = Math.min(stage.canvas.width / backgroundsrc.width, stage.canvas.height / backgroundsrc.height);
-    // realBackgroundWidth = backgroundsrc.width * scaleFactor;
-    // realBackgroundHeight = backgroundsrc.height * scaleFactor;
-    // realLandWidth = realBackgroundWidth * landWidth;
-
-    // terrainWidth = (terrain.rightTop.x - terrain.leftTop.x) * backgroundsrc.width;
-    // terrainHeight = (terrain.leftBottom.y - terrain.rightBottom.y) * backgroundsrc.height;
 
     container = new createjs.Container();
     container.addChild(background);
@@ -197,12 +211,15 @@ function showStage() {
 }
 
 function addCarrot() {
-    carrot = new createjs.Bitmap(queue.getResult('carrot'));
+
+    //carrot = new createjs.Bitmap(queue.getResult('carrot'));
+    carrot = new Carrot();
     let center = getTerrainCellCenter(land[land.length - 1].row, land[land.length - 1].col);
-    let leftTop = getLeftTopCoorinate(center, carrot.image.width, carrot.image.height);
-    carrot.x = leftTop.x;
-    carrot.y = leftTop.y;
-    container.addChild(carrot);
+    //let leftTop = getLeftTopCoorinate(center, carrot.image.width, carrot.image.height);
+    let leftTop = getLeftTopCoorinate(center, carrot.width, carrot.height);
+    carrot.src.x = leftTop.x;
+    carrot.src.y = leftTop.y;
+    container.addChild(carrot.src);
 }
 
 // function modifyScale(img, scaleFactor) {
@@ -363,20 +380,7 @@ function generateTerrain() {
 
 // event handlers
 function tryBuidingTower(event) {
-    // alert("clicked background");
     let x = event.stageX, y = event.stageY;
-    // for (let point of land) {
-    //     if (Math.abs(x - point.x * realBackgroundWidth) < realLandWidth / 2 || Math.abs(y - point.y * realBackgroundHeight) < realLandWidth / 2) return;
-    // }
-    // let bottlesrc = queue.getResult('bottle');
-    // let realBottleWidth = bottlesrc.width * scaleFactor;
-    // let realBottleHeight = bottlesrc.height * scaleFactor;
-    // let bottle = new createjs.Bitmap(bottlesrc);
-    // modifyScale(bottle, scaleFactor);
-    // bottle.x = x - realBottleWidth / 2;
-    // bottle.y = y - realBottleHeight / 2;
-    // bottles.push(bottle);
-    // container.addChild(bottle);
     let cell = calCell(x, y);
     if (isValidCell(cell.row, cell.col) && terrain[cell.row][cell.col].status === 'available') {
         let center = getTerrainCellCenter(cell.row, cell.col);
