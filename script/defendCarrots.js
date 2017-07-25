@@ -458,7 +458,7 @@ function generateTerrain() {
 
 // event handlers
 function tryBuidingTower(event) {
-    let x = event.stageX, y = event.stageY;
+    let x = event.localX, y = event.localY;
     let cell = calCell(x, y);
     if (isValidCell(cell.row, cell.col) && terrain[cell.row][cell.col].status === 'available') {
         let center = getTerrainCellCenter(cell.row, cell.col);
@@ -478,9 +478,6 @@ function tryBuidingTower(event) {
 
 }
 
-function generateSun() {
-
-}
 
 // calculations
 function getTerrainCellCenter(r, c) {
