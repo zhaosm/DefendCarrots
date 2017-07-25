@@ -18,7 +18,7 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters and towers
-let monsterTimer = 0, towerTimer = 0;
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 50;// speed: per second
 let monsters = [], towers = [], bullets = [];
 let towerSpeed = 2, towerRadius = 1000, towerUpgradeCost = 180;
 // navBar
@@ -89,7 +89,6 @@ class Carrot {
     }
 }
 
-// classes
 class Tower {
     constructor() {
         this.src = null;
@@ -97,6 +96,7 @@ class Tower {
         this.radius = towerRadius;
         this.level = 1;
         this.upgradeCost = 180;
+        this.power = 0.5;
     }
     findTarget(monsterList, carrotCenter) {
         let closest = null, closestDist = 1000000000;
@@ -114,6 +114,9 @@ class Tower {
         }
         return closest;
     }
+    attack() {
+
+    }
 }
 
 class Bottle extends Tower{
@@ -130,7 +133,7 @@ class Bottle extends Tower{
         this.src.y = center.y;
         // this.speed = backgroundWidth / 2;// per second
     }
-    fire(monsterContainer) {
+    attack(monsterContainer) {
         if (!monsterContainer) return;
         let towerpt = container.localToLocal(this.src.x, this.src.y, container);
         let center = {x: towerpt.x, y: towerpt.y};
@@ -155,7 +158,7 @@ class Sun extends Tower {
     constructor(center, ...args) {
         super(...args);
         let sunIcon = queue.getResult('sunIcon');
-        this.icon = new createjs.Bitmap(sunIcon);
+        this.src = new createjs.Bitmap(sunIcon);
         let spriteSheetImg = queue.getResult('sunSpriteSheet');
         let data = {
             images: [spriteSheetImg],
@@ -174,19 +177,19 @@ class Sun extends Tower {
             }
         };
         this.spriteSheet = new createjs.SpriteSheet(data);
-        // let leftTop = getLeftTopCoorinate(center, this.icon.image.width, this.icon.image.height);
-        this.icon.regX = this.icon.image.width / 2;
-        this.icon.regY = this.icon.image.height / 2;
-        this.icon.x = center.x;
-        this.icon.y = center.y;
+        // let leftTop = getLeftTopCoorinate(center, this.src.image.width, this.src.image.height);
+        this.src.regX = this.src.image.width / 2;
+        this.src.regY = this.src.image.height / 2;
+        this.src.x = center.x;
+        this.src.y = center.y;
         this.radius = spriteSheetImg.width / 10;
-        this.attack = 0.2;
+        this.power = 0.2;
     }
-    fire() {
+    attack() {
         let animation = new createjs.Sprite(this.spriteSheet, 'level1');
         animation.regX = animation.regY = this.radius;
-        animation.x = this.icon.x;
-        animation.y = this.icon.y;
+        animation.x = this.src.x;
+        animation.y = this.src.y;
         container.addChild(animation);
     }
     findTargets(monsterList) {
@@ -194,11 +197,29 @@ class Sun extends Tower {
         for (let monsterContainer of monsterList) {
             let monster = monsterContainer.src.getChildByName('monster');
             let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
-            if (eucDistance(this.icon.x, this.icon.y, monsterpt.x, monsterpt.y) <= this.radius) {
+            if (eucDistance(this.src.x, this.src.y, monsterpt.x, monsterpt.y) <= this.radius) {
                 targets.push(monsterContainer);
             }
         }
         return targets;
+    }
+}
+
+class Shit extends Tower {
+    constructor(center, ...args) {
+        super(...args);
+        let shitsrc = queue.getResult('shit');
+        this.src = new createjs.Bitmap(shitsrc);
+        this.src.regX = this.src.image.width / 2;
+        this.src.regY = this.src.image.height / 2;
+        this.src.x = center.x;
+        this.src.y = center.y;
+        this.power = 0.5;
+    }
+    attack(monsterContainer) {
+        if (!monsterContainer) return;
+        monsterContainer.speed -= monsterSpeed * this.power;
+        if (monsterContainer.speed < 0) monsterContainer.speed = 0;
     }
 }
 
@@ -209,6 +230,7 @@ class Monster {
         this.bloodColor = "#21ff3a";
         this.bloodHeight = monstersrc.height / 5;
         this.bloodDist = monstersrc.height / 5;
+        this.speed = monsterSpeed;
         let totalHeight = monstersrc.height + this.bloodDist + this.bloodHeight;
         let dy = totalHeight - cellHeight / 2;
         let monster = new createjs.Bitmap(monstersrc);
@@ -227,14 +249,15 @@ class Monster {
         this.src.y = getTerrainCellCenter(land[0].row, land[0].col).y - dy;
         this.src.addChild(blood);
         this.src.addChild(monster);
-        createjs.Tween.get(this.src, {loop: false}).to({y: getTerrainCellCenter(land[1].row, land[1].col).y - dy}, 1000)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[2].row, land[2].col), monstersrc.width, totalHeight).x}, 1000)
-            .to({y: getTerrainCellCenter(land[3].row, land[3].col).y - dy}, 1000)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[4].row, land[4].col), monstersrc.width, totalHeight).x}, 1000)
-            .to({y: getTerrainCellCenter(land[5].row, land[5].col).y - dy}, 1000)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[6].row, land[6].col), monstersrc.width, totalHeight).x}, 1000)
-            .to({y: getTerrainCellCenter(land[7].row, land[7].col).y - dy}, 1000)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[8].row, land[8].col), monstersrc.width, totalHeight).x}, 1000);
+        let time = 1000 * backgroundWidth / 5 / this.speed;
+        createjs.Tween.get(this.src, {loop: false}).to({y: getTerrainCellCenter(land[1].row, land[1].col).y - dy}, time)
+            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[2].row, land[2].col), monstersrc.width, totalHeight).x}, time)
+            .to({y: getTerrainCellCenter(land[3].row, land[3].col).y - dy}, time)
+            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[4].row, land[4].col), monstersrc.width, totalHeight).x}, time)
+            .to({y: getTerrainCellCenter(land[5].row, land[5].col).y - dy}, time)
+            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[6].row, land[6].col), monstersrc.width, totalHeight).x}, time)
+            .to({y: getTerrainCellCenter(land[7].row, land[7].col).y - dy}, time)
+            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[8].row, land[8].col), monstersrc.width, totalHeight).x}, time);
     }
     updateBlood() {
         if (this.blood < 0) this.blood = 0;
@@ -254,7 +277,7 @@ class Bullet {
         this.src.x = leftTop.x;// + this.src.image.width / 2;
         this.src.y = leftTop.y;// - this.src.image.height / 2;
         this.speed = backgroundWidth;// per second
-        this.attack = 0.25;
+        this.power = 0.25;
         this.targetCenter = targetCenter;
         // let targetLeftTop = getLeftTopCoorinate(targetCenter, this.src.image.width, this.src.image.height);
         let tmpDist = eucDistance(center.x, center.y, targetCenter.x, targetCenter.y);
@@ -277,7 +300,8 @@ function init() {
         {src: 'image/bottleBullet.png', id: 'bottleBullet'},
         {src: 'image/carrot.png', id: 'carrot'},
         {src: 'image/sunSpriteSheet.png', id: 'sunSpriteSheet'},
-        {src: 'image/sunIcon.png', id: 'sunIcon'}
+        {src: 'image/sunIcon.png', id: 'sunIcon'},
+        {src: 'image/shit.png', id: 'shit'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
@@ -344,7 +368,6 @@ function update() {
     updateTowers();
     updateBullets();
 
-
     stage.update();
 }
 
@@ -376,18 +399,19 @@ function updateTowers() {
     towerTimer++;
     if (towerTimer % 20 === 0) {
         for (let tower of towers) {
-            if (tower.constructor.name === 'Bottle') {
-                tower.fire(tower.findTarget(monsters, getCenterCoordinate({
-                    x: carrot.x,
-                    y: carrot.y
-                }, carrot.image.width, carrot.image.height)));
+            let center = getCenterCoordinate({
+                x: carrot.x,
+                y: carrot.y
+            }, carrot.image.width, carrot.image.height);
+            if (tower.constructor.name === 'Bottle' || tower.constructor.name === 'Shit') {
+                tower.attack(tower.findTarget(monsters, center));
             }
             else if (tower.constructor.name === 'Sun' && towerTimer % 200 === 0) {
                 let targets = tower.findTargets(monsters);
                 if (targets.length) {
                     for (let monsterContainer of monsters) {
-                        tower.fire();
-                        monsterContainer.blood -= tower.attack;
+                        tower.attack();
+                        monsterContainer.blood -= tower.power;
                     }
                 }
             }
@@ -425,7 +449,7 @@ function updateBullets() {
                 let dx = bullets[i].src.x - monsterpt.x;
                 let dy = bullets[i].src.y - monsterpt.y;
                 if (dx >= -bullets[i].src.image.width && dx <= monster.image.width && dy >= -bullets[i].src.image.height && dy <= monster.image.height) {
-                    closest.blood -= bullets[i].attack;
+                    closest.blood -= bullets[i].power;
                     container.removeChild(bullets[i].src);
                     bullets.splice(i, 1);
                     continue;
@@ -513,9 +537,14 @@ function tryBuidingTower(event) {
         // container.addChild(bottle.src);
 
         // sun
-        let sun = new Sun(center);
-        towers.push(sun);
-        container.addChild(sun.icon);
+        // let sun = new Sun(center);
+        // towers.push(sun);
+        // container.addChild(sun.src);
+
+        // shit
+        let shit = new Shit(center);
+        towers.push(shit);
+        container.addChild(shit.src);
 
         // set cell status
         terrain[cell.row][cell.col].status = 'unavailable';
