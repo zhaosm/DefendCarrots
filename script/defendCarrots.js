@@ -153,6 +153,7 @@ class Sun extends Tower {
         this.icon.x = center.x;
         this.icon.y = center.y;
         this.radius = spriteSheetImg.width / 10;
+        this.attack = 0.2;
     }
     fire() {
         let animation = new createjs.Sprite(this.spriteSheet, 'level1');
@@ -160,6 +161,17 @@ class Sun extends Tower {
         animation.x = this.icon.x;
         animation.y = this.icon.y;
         container.addChild(animation);
+    }
+    findTargets(monsterList) {
+        let targets = [];
+        for (let monsterContainer of monsterList) {
+            let monster = monsterContainer.src.getChildByName('monster');
+            let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
+            if (eucDistance(this.icon.x, this.icon.y, monsterpt.x, monsterpt.y) <= this.radius) {
+                targets.push(monsterContainer);
+            }
+        }
+        return targets;
     }
 }
 
@@ -335,7 +347,7 @@ function updateTowers() {
     /*
     * 找怪物，产生子弹*/
     towerTimer++;
-    if (towerTimer % 400 === 0) {
+    if (towerTimer % 20 === 0) {
         for (let tower of towers) {
             if (tower.constructor.name === 'Bottle') {
                 tower.fire(tower.findTarget(monsters, getCenterCoordinate({
@@ -343,8 +355,14 @@ function updateTowers() {
                     y: carrot.y
                 }, carrot.image.width, carrot.image.height)));
             }
-            else if (tower.constructor.name === 'Sun') {
-                tower.fire();
+            else if (tower.constructor.name === 'Sun' && towerTimer % 200 === 0) {
+                let targets = tower.findTargets(monsters);
+                if (targets.length) {
+                    for (let monsterContainer of monsters) {
+                        tower.fire();
+                        monsterContainer.blood -= tower.attack;
+                    }
+                }
             }
         }
     }
