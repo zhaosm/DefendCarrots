@@ -61,6 +61,33 @@ let terrain = [];
 //     {x: 0.88, y: 0.31},
 //     {x: 0.37, y: 0.31}
 // ];
+const carrotData = {
+    images:['image/carrotAll.png'],
+    //frames:{width:26, height:40, count:12, regX:0, regY:0},
+    frames:[
+        // x, y, width, height, imageIndex*, regX*, regY*
+        [0,0,120,118],
+        [120,0,115,118],
+        [232,0,112,118],
+        [0,114,112,118],
+    ],
+//创建动画，动画的名字，以及对应"frames"列表中的哪些帧，也有两种方法
+    animations:{
+        // start, end, next, speed
+        "run": [0, 3, "run",0.2],
+    }
+};
+
+// classes
+class Carrot {
+    constructor() {
+        this.move = new createjs.SpriteSheet(carrotData);
+        //SpriteSheet类设置帧和动画,里面的run为开始的动画
+        this.src = new createjs.Sprite(this.move,"run");
+        this.height = 300;
+        this.width = 300;
+    }
+}
 
 // classes
 class Tower {
