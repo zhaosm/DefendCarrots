@@ -10,9 +10,10 @@ let $canvas = $('canvas');
 $canvas.attr("width", stageWidth + "");
 $canvas.attr('height', stageHeight + "");
 
+//game status
+let status;//1=running 0=stop
 // background and containers
 let stage, queue, background, container;
-let navbar;
 let carrot;
 // background size and scaleFactor
 let backgroundWidth, backgroundHeight, scaleFactor = 0;
@@ -23,6 +24,7 @@ let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1;// speed: per second
 let monsters = [], towers = [], bullets = [];
 let towerSpeed = 2, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 // navBar
+let navbar;
 let life = 10, coins = 5000;
 
 // terrain data
@@ -67,17 +69,43 @@ class Carrot {
 
 class Navbar {
     constructor() {
-        let navbarsrc = queue.getResult('items');
+        let itemssrc = queue.getResult('items');
         this.src = new createjs.Container();
-        this.bar = new createjs.Bitmap(navbarsrc);
-        this.bar.x = 150;
+
+        this.bar = new createjs.Bitmap(itemssrc);
+        this.bar.scaleX = 1.5;
+        this.bar.scaleY = 1.5;
+        this.bar.x = 25;
         this.bar.y = 0;
         this.bar.sourceRect = new createjs.Rectangle(0, 0, 605, 50);
         this.src.addChild(this.bar);
-        this.coinText = new createjs.Text(coins, '24px Arial', '#ffffff');
-        this.coinText.x = 205;
-        this.coinText.y = 10;
+
+        this.coinText = new createjs.Text(coins, '36px Arial', '#ffffff');
+        this.coinText.x = 110;
+        this.coinText.y = 14;
         this.src.addChild(this.coinText);
+
+        this.stopButton = new createjs.Bitmap(itemssrc);
+        this.stopButton.x = 760;
+        this.stopButton.y = 3;
+        //1363*512
+        this.stopButton.sourceRect = new createjs.Rectangle(1323, 310, 40, 40);
+        this.stopButton.scaleX = 1.5;
+        this.stopButton.scaleY = 1.5;
+        this.stopButton.addEventListener("click", stopOrContinue);
+        this.src.addChild(this.stopButton);
+
+
+        this.listButton = new createjs.Bitmap(itemssrc);
+        this.listButton.x = 840;
+        this.listButton.y = 64;
+        this.listButton.rotation = 270;
+        //1363*512
+        this.listButton.sourceRect = new createjs.Rectangle(1143, 475, 40, 40);
+        this.listButton.scaleX = 1.5;
+        this.listButton.scaleY = 1.5;
+        this.src.addChild(this.listButton);
+
     }
 }
 
@@ -643,8 +671,7 @@ function addCarrot() {
     container.addChild(carrot.src);
 }
 
-function addNavbar()
-{
+function addNavbar() {
     navbar = new Navbar();
     container.addChild(navbar.src);
 }
@@ -656,18 +683,22 @@ function setControllers() {
 function startGame() {
     createjs.Ticker.setFPS(60);
     createjs.Ticker.addEventListener('tick', update);
+    status = 1;
 }
 
 // update functions
 function update() {
     // update
-    updateMonsters();
-    updateTowers();
-    updateBullets();
-    updateNavbar()
+    if(status === 1)
+    {
+        updateMonsters();
+        updateTowers();
+        updateBullets();
+        updateNavbar();
+        // debug
+        console.log('update');
+    }
     stage.update();
-    // debug
-    console.log('');
 }
 
 function updateMonsters() {
@@ -787,9 +818,7 @@ function updateCarrot() {
     * 根据萝卜的命播放相应的动画*/
 }
 
-
 function updateNavbar() {
-    coins++;
     navbar.coinText.text = coins.toString();
 }
 
@@ -876,6 +905,26 @@ function instanceUpLevel() {
     this.instance.upLevel();
     // this.off('click', this.upLevelListener);
     this.instance.hideInformation();
+}
+
+function stopOrContinue(event){
+    console.log("status=",status);
+    if(status === 0)//if not running
+    {
+        navbar.stopButton.rotation = 0;
+        navbar.stopButton.x = 760;
+        navbar.stopButton.y = 3;
+        navbar.stopButton.sourceRect = new createjs.Rectangle(1323, 310, 40, 40);
+        status = 1;
+    }
+    else//if running
+    {
+        navbar.stopButton.rotation = 270;
+        navbar.stopButton.x = 765;
+        navbar.stopButton.y = 64;
+        navbar.stopButton.sourceRect = new createjs.Rectangle(1143, 475, 40, 40);
+        status = 0;
+    }
 }
 
 
