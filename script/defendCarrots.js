@@ -21,7 +21,7 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters and towers
 
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 5;// speed: per second
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1;// speed: per second
 
 let monsters = [], towers = [], bullets = [];
 let towerSpeed = 2, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
@@ -283,8 +283,8 @@ class Tower {
     }
     calAttackParameters(monsterContainer) {
         if (!monsterContainer) return;
-        let towerpt = container.localToLocal(this.src.x, this.src.y, container);
-        let center = {x: towerpt.x, y: towerpt.y};
+        // let towerpt = container.localToLocal(this.src.x, this.src.y, container);
+        let center = {x: this.src.x, y: this.src.y};
         // let monster = monsterContainer.src.getChildByName('monster');
         // let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
         // let center = getCenterCoordinate(leftTop, this.src.image.width, this.src.image.height);
@@ -292,12 +292,32 @@ class Tower {
         let targetCenter = {x: monsterContainer.src.x, y: monsterContainer.src.y};
         // let degree = calAngle({x: this.src.x, y: this.src.y}, p1, targetCenter, 'degrees');
         // this.src.rotation = -degree;
-        let degree = Math.atan2(targetCenter.y - towerpt.y, targetCenter.x - towerpt.x) * (180 / Math.PI);
+        let degree = Math.atan2(targetCenter.y - this.src.y, targetCenter.x - this.src.x) * (180 / Math.PI);
         if (degree < 0) degree = 360 - (-degree);
         degree += 90;
         return {center: center, degree: degree, targetCenter: targetCenter};
     }
-    attack() {
+    attack(monsterContainer) {
+        if (!monsterContainer) return;
+        let attackParameters = this.calAttackParameters(monsterContainer);
+        // this.src.rotation = attackParameters.degree;
+        let bullet = null;
+        if (this.constructor.name === 'Bottle') {
+            bullet = new Bullet('bottleBullet_level' + this.level);
+        }
+        else if (this.constructor.name === 'Shit') {
+            bullet = new Bullet('poo_level' + this.level);
+        }
+
+        let tmpDist = eucDistance(attackParameters.center.x, attackParameters.center.y, attackParameters.targetCenter.x, attackParameters.targetCenter.y);
+        let dist = 0;
+        dist = this.src.getBounds().height / 2 + bullet.src.getBounds().height / 2;
+        let center = {x: attackParameters.center.x + (attackParameters.targetCenter.x - attackParameters.center.x) * dist / tmpDist, y: attackParameters.center.y + (attackParameters.targetCenter.y - attackParameters.center.y) * dist / tmpDist};
+        bullet.attack(center, attackParameters.degree, attackParameters.targetCenter);
+        bullets.push(bullet);
+        container.addChildAt(bullet.src, container.getChildIndex(this.src));
+
+        return {center: center, degree: attackParameters.degree, targetCenter: attackParameters.targetCenter};
     }
     showInformation() {
         // attack circle
@@ -373,12 +393,8 @@ class Bottle extends Tower{
     }
 
     attack(monsterContainer) {
-        if (!monsterContainer) return;
-        let attackParameters = this.calAttackParameters(monsterContainer);
-        this.src.rotation = attackParameters.degree;
-        let bullet = new Bullet('bottleBullet_level' + this.level, attackParameters.center, attackParameters.degree, attackParameters.targetCenter);
-        bullets.push(bullet);
-        container.addChildAt(bullet.src, container.getChildIndex(this.src));
+        let attackParameters = super.attack(monsterContainer);
+        if (attackParameters) this.src.rotation = attackParameters.degree;
     }
 }
 
@@ -429,6 +445,7 @@ class Sun extends Tower {
         super.setParameters();
         this.power = 0.2;
         this.price = 180;
+        this.timer = 0;
         this.upLevelPrices = [260, 320];
         this.priceImgNames = [
             'sun_disable',
@@ -505,14 +522,14 @@ class Shit extends Tower {
             'shit_level3'
         ]
     }
-    attack(monsterContainer) {
-        if (!monsterContainer) return;
-        let attackParameters = this.calAttackParameters(monsterContainer);
-        let bullet = new Bullet('poo_level' + this.level, attackParameters.center, attackParameters.degree, attackParameters.targetCenter);
-        bullets.push(bullet);
-        container.addChildAt(bullet.src, container.getChildIndex(this.src));
-
-    }
+    // attack(monsterContainer) {
+    //     if (!monsterContainer) return;
+    //     let attackParameters = this.calAttackParameters(monsterContainer);
+    //     let bullet = new Bullet('poo_level' + this.level, attackParameters.center, attackParameters.degree, attackParameters.targetCenter);
+    //     bullets.push(bullet);
+    //     container.addChildAt(bullet.src, container.getChildIndex(this.src));
+    //
+    // }
 }
 
 class Monster {
@@ -558,7 +575,7 @@ class Monster {
 }
 
 class Bullet {
-    constructor(type, center, rotation, targetCenter) {
+    constructor(type) {
         this.type = type;
         let iconName;
         if (type === 'bottleBullet_level1') {
@@ -584,6 +601,8 @@ class Bullet {
 
         let src = queue.getResult(iconName);
         this.src = new createjs.Bitmap(src);
+    }
+    attack(center, rotation, targetCenter) {
         let srcBounds = this.src.getBounds();
         this.src.regX = srcBounds.width / 2;
         this.src.regY = srcBounds.height / 2;
@@ -781,13 +800,13 @@ function updateTowers() {
     /*
     * 找怪物，产生子弹*/
     towerTimer++;
-    if (towerTimer % 15 === 0) {
-        for (let tower of towers) {
-            let center = {x: carrot.src.x, y: carrot.src.y};
-            if (tower.constructor.name === 'Bottle' || tower.constructor.name === 'Shit') {
-                tower.attack(tower.findTarget(monsters, center));
-            }
-            else if (tower.constructor.name === 'Sun' && towerTimer % 60 === 0) {
+    for (let tower of towers) {
+        let center = {x: carrot.src.x, y: carrot.src.y};
+        if ((towerTimer % 15 === 0 && tower.constructor.name === 'Bottle') || (towerTimer % 20 === 0 &&  tower.constructor.name === 'Shit')) {
+            tower.attack(tower.findTarget(monsters, center));
+        }
+        else if (tower.constructor.name === 'Sun') {
+            if (tower.timer % 60 === 0) {
                 let targets = tower.findTargets(monsters);
                 if (targets.length) {
                     for (let monsterContainer of monsters) {
@@ -796,6 +815,7 @@ function updateTowers() {
                     }
                 }
             }
+            tower.timer++;
         }
     }
 }
