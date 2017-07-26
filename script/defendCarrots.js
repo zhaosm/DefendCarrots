@@ -107,20 +107,20 @@ class Cell {
             return;
         }
         let towers = [
-            new Bottle({x: 0, y: 0})// ,
-            // new Sun({x: 0, y: 0}),
-            // new Shit({x: 0, y: 0})
+            new Bottle({x: 0, y: 0}),
+            new Sun({x: 0, y: 0}),
+            new Shit({x: 0, y: 0})
         ];
         this.priceImgs = [];
         let availables = [];
         for (let tower of towers) {
             let img = null;
             if (coins < tower.price) {
-                img = new createjs.Bitmap(queue.getResult(tower.priceImgs[0]));
+                img = new createjs.Bitmap(queue.getResult(tower.priceImgNames[0]));
                 availables.push(false);
             }
             else {
-                img = new createjs.Bitmap(queue.getResult(tower.priceImgs[1]));
+                img = new createjs.Bitmap(queue.getResult(tower.priceImgNames[1]));
                 availables.push(true);
             }
             img.name = tower.constructor.name;
@@ -174,7 +174,7 @@ class Tower {
         this.upLevelImgs = [];
         this.levelIconNames = [];
         this.upLevelImg = null;
-        this.priceImgs = [];
+        this.priceImgNames = [];
     }
     setLevelIconNames() {
     }
@@ -304,7 +304,7 @@ class Bottle extends Tower{
         this.power = 0.25;
         this.price = 100;
         this.upLevelPrices = [180, 260];
-        this.priceImgs = [
+        this.priceImgNames = [
             'bottle_disable',
             'bottle_able'
         ]
@@ -363,7 +363,7 @@ class Sun extends Tower {
         this.radius = spriteSheetImg.width / 10;
 
         // icon
-        this.setIcon('sunIcon', center);
+        this.setIcon('sun_level1', center);
         this.setIconControl();
 
         let upLevelSrc = [
@@ -382,6 +382,18 @@ class Sun extends Tower {
         this.power = 0.2;
         this.price = 180;
         this.upLevelPrices = [260, 320];
+        this.priceImgNames = [
+            'sun_disable',
+            'sun_able'
+        ];
+        this.setLevelIconNames();
+    }
+    setLevelIconNames() {
+        this.levelIconNames = [
+            'sun_level1',
+            'sun_level2',
+            'sun_level3'
+        ]
     }
     attack() {
         let animation = new createjs.Sprite(this.spriteSheet, 'level1');
@@ -406,7 +418,7 @@ class Sun extends Tower {
 class Shit extends Tower {
     constructor(center, ...args) {
         super(...args);
-        this.setIcon('shit', center);
+        this.setIcon('shit_level1', center);
         this.setIconControl();
 
         let upLevelSrc = [
@@ -426,6 +438,18 @@ class Shit extends Tower {
         this.power = 0.2;
         this.price = 120;
         this.upLevelPrices = [220, 260];
+        this.priceImgNames = [
+            'shit_disable',
+            'shit_able'
+        ];
+        this.setLevelIconNames();
+    }
+    setLevelIconNames() {
+        this.levelIconNames = [
+            'shit_level1',
+            'shit_level2',
+            'shit_level3'
+        ]
     }
     attack(monsterContainer) {
         if (!monsterContainer) return;
@@ -513,8 +537,12 @@ function init() {
         {src: 'image/bottleBullet.png', id: 'bottleBullet'},
         {src: 'image/carrot.png', id: 'carrot'},
         {src: 'image/sunSpriteSheet.png', id: 'sunSpriteSheet'},
-        {src: 'image/sunIcon.png', id: 'sunIcon'},
-        {src: 'image/shit.png', id: 'shit'},
+        {src: 'image/sun_level1.png', id: 'sun_level1'},
+        {src: 'image/sun_level2.png', id: 'sun_level2'},
+        {src: 'image/sun_level3.png', id: 'sun_level3'},
+        {src: 'image/shit_level1.png', id: 'shit_level1'},
+        {src: 'image/shit_level2.png', id: 'shit_level2'},
+        {src: 'image/shit_level3.png', id: 'shit_level3'},
         {src: 'image/upLevel_180_able.png', id: 'upLevel_180_able'},
         {src: 'image/upLevel_180_disable.png', id: 'upLevel_180_disable'},
         {src: 'image/upLevel_260_able.png', id: 'upLevel_260_able'},
@@ -526,7 +554,11 @@ function init() {
         {src: 'image/max.png', id: 'max'},
         {src: 'image/available.png', id: 'available'},
         {src: 'image/bottle_disable.png', id: 'bottle_disable'},
-        {src: 'image/bottle_able.png', id: 'bottle_able'}
+        {src: 'image/bottle_able.png', id: 'bottle_able'},
+        {src: 'image/sun_able.png', id: 'sun_able'},
+        {src: 'image/sun_disable.png', id: 'sun_disable'},
+        {src: 'image/shit_disable.png', id: 'shit_disable'},
+        {src: 'image/shit_able.png', id: 'shit_able'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
