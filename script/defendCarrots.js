@@ -224,6 +224,8 @@ class Tower {
         this.circle.y = this.src.y;
         this.circle.alpha = 0.3;
     }
+
+    // methods
     findTarget(monsterList, carrotCenter) {
         let closest = null, closestDist = 1000000000;
         for (let monsterContainer of monsterList) {
@@ -240,8 +242,22 @@ class Tower {
         }
         return closest;
     }
-
-    // methods
+    calAttackParameters(monsterContainer) {
+        if (!monsterContainer) return;
+        let towerpt = container.localToLocal(this.src.x, this.src.y, container);
+        let center = {x: towerpt.x, y: towerpt.y};
+        let monster = monsterContainer.src.getChildByName('monster');
+        let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
+        // let center = getCenterCoordinate(leftTop, this.src.image.width, this.src.image.height);
+        // let p1 = {x: this.src.x, y: this.src.y + this.src.image.height / 2};
+        let targetCenter = getCenterCoordinate({x: monsterpt.x, y: monsterpt.y}, monster.image.width, monster.image.height);
+        // let degree = calAngle({x: this.src.x, y: this.src.y}, p1, targetCenter, 'degrees');
+        // this.src.rotation = -degree;
+        let degree = Math.atan2(targetCenter.y - towerpt.y, targetCenter.x - towerpt.x) * (180 / Math.PI);
+        if (degree < 0) degree = 360 - (-degree);
+        degree += 90;
+        return {center: center, degree: degree, targetCenter: targetCenter};
+    }
     attack() {
     }
     showInformation() {
@@ -316,23 +332,13 @@ class Bottle extends Tower{
             'bottle_level3'
         ];
     }
+
     attack(monsterContainer) {
         if (!monsterContainer) return;
-        let towerpt = container.localToLocal(this.src.x, this.src.y, container);
-        let center = {x: towerpt.x, y: towerpt.y};
-        let monster = monsterContainer.src.getChildByName('monster');
-        let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
-        // let center = getCenterCoordinate(leftTop, this.src.image.width, this.src.image.height);
-        // let p1 = {x: this.src.x, y: this.src.y + this.src.image.height / 2};
-        let targetCenter = getCenterCoordinate({x: monsterpt.x, y: monsterpt.y}, monster.image.width, monster.image.height);
-        // let degree = calAngle({x: this.src.x, y: this.src.y}, p1, targetCenter, 'degrees');
-        // this.src.rotation = -degree;
-        let degree = Math.atan2(targetCenter.y - towerpt.y, targetCenter.x - towerpt.x) * (180 / Math.PI);
-        if (degree < 0) degree = 360 - (-degree);
-        this.src.rotation = 90 + degree;
-        let bullet = new Bullet(1, center, targetCenter);
+        let attackParameters = this.calAttackParameters(monsterContainer);
+        this.src.rotation = attackParameters.degree;
+        let bullet = new Bullet('bottleBullet_level' + this.level, attackParameters.center, attackParameters.degree, attackParameters.targetCenter);
         bullets.push(bullet);
-        // let index = container.getChildIndex(this.src);
         container.addChildAt(bullet.src, container.getChildIndex(this.src));
     }
 }
@@ -453,8 +459,11 @@ class Shit extends Tower {
     }
     attack(monsterContainer) {
         if (!monsterContainer) return;
-        monsterContainer.speed -= monsterSpeed * this.power;
-        if (monsterContainer.speed < 0) monsterContainer.speed = 0;
+        let attackParameters = this.calAttackParameters(monsterContainer);
+        let bullet = new Bullet('poo_level' + this.level, attackParameters.center, attackParameters.degree, attackParameters.targetCenter);
+        bullets.push(bullet);
+        container.addChildAt(bullet.src, container.getChildIndex(this.src));
+
     }
 }
 
@@ -505,23 +514,44 @@ class Monster {
 }
 
 class Bullet {
-    constructor(type, center, targetCenter) {
-        let bulletsrc = queue.getResult('bottleBullet');
-        this.src = new createjs.Bitmap(bulletsrc);
-        let leftTop = getLeftTopCoorinate(center, this.src.image.width, this.src.image.height);
-        this.src.x = leftTop.x;// + this.src.image.width / 2;
-        this.src.y = leftTop.y;// - this.src.image.height / 2;
+    constructor(type, center, rotation, targetCenter) {
+        this.type = type;
+        let iconName;
+        if (type === 'bottleBullet_level1') {
+            iconName = 'bottleBullet_level1';
+        }
+        else if (type === 'bottleBullet_level2') {
+            iconName = 'bottleBullet_level2';
+        }
+        else if (type === 'bottleBullet_level3') {
+            iconName = 'bottleBullet_level3';
+        }
+        else if (type === 'poo_level1') {
+            iconName = 'poo_level1';
+        }
+        else if (type === 'poo_level2') {
+            iconName = 'poo_level2';
+        }
+        else if (type === 'poo_level3') {
+            iconName = 'poo_level3';
+        }
         this.speed = backgroundWidth;// per second
         this.power = 0.25;
+
+        let src = queue.getResult(iconName);
+        this.src = new createjs.Bitmap(src);
+        this.src.regX = this.src.image.width / 2;
+        this.src.regY = this.src.image.height / 2;
+        this.src.x = center.x;
+        this.src.y = center.y;
+        this.src.rotation = rotation;
         this.targetCenter = targetCenter;
-        // let targetLeftTop = getLeftTopCoorinate(targetCenter, this.src.image.width, this.src.image.height);
         let tmpDist = eucDistance(center.x, center.y, targetCenter.x, targetCenter.y);
         let dist = eucDistance(0, 0, backgroundWidth, backgroundHeight);
         let time = 1000 * dist / this.speed;
         let destCenter = {x: center.x + (targetCenter.x - center.x) * dist / tmpDist, y: center.y + (targetCenter.y - center.y) * dist / tmpDist};
-        let destLeftTop = getLeftTopCoorinate(destCenter, this.src.image.width, this.src.image.height);
         createjs.Tween.get(this.src, {loop: false})
-            .to({x: destLeftTop.x, y: destLeftTop.y}, time);
+            .to({x: destCenter.x, y: destCenter.y}, time);
     }
 }
 
@@ -534,7 +564,9 @@ function init() {
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
-        {src: 'image/bottleBullet.png', id: 'bottleBullet'},
+        {src: 'image/bottleBullet_level1.png', id: 'bottleBullet_level1'},
+        {src: 'image/bottleBullet_level2.png', id: 'bottleBullet_level2'},
+        {src: 'image/bottleBullet_level3.png', id: 'bottleBullet_level3'},
         {src: 'image/carrot.png', id: 'carrot'},
         {src: 'image/sunSpriteSheet.png', id: 'sunSpriteSheet'},
         {src: 'image/sun_level1.png', id: 'sun_level1'},
@@ -558,7 +590,10 @@ function init() {
         {src: 'image/sun_able.png', id: 'sun_able'},
         {src: 'image/sun_disable.png', id: 'sun_disable'},
         {src: 'image/shit_disable.png', id: 'shit_disable'},
-        {src: 'image/shit_able.png', id: 'shit_able'}
+        {src: 'image/shit_able.png', id: 'shit_able'},
+        {src: 'image/poo_level1.png', id: 'poo_level1'},
+        {src: 'image/poo_level2.png', id: 'poo_level2'},
+        {src: 'image/poo_level3.png', id: 'poo_level3'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
@@ -600,7 +635,7 @@ function addCarrot() {
 }
 
 function setControllers() {
-    background.addEventListener("click", tryBuidingTower);
+    background.addEventListener("click", tryBuildingTower);
 }
 
 function startGame() {
@@ -786,31 +821,17 @@ function generateTerrain() {
 }
 
 // event handlers
-function tryBuidingTower(event) {
+function tryBuildingTower(event) {
     let x = event.localX, y = event.localY;
     let cell = calCell(x, y);
     if (isValidCell(cell.row, cell.col) && terrain[cell.row][cell.col].status === 'available') {
+        for (let r = 0;r < row;r++) {
+            for (let c = 0;c < col;c++) {
+                if ((r !== cell.row || c !== cell.col) && terrain[r][c].showing) terrain[r][c].hide();
+            }
+        }
         terrain[cell.row][cell.col].showChoices();
-        // let center = getTerrainCellCenter(cell.row, cell.col);
-        // bottle
-        // let bottle = new Bottle(center);
-        // towers.push(bottle);
-        // container.addChild(bottle.src);
-
-        // sun
-        // let sun = new Sun(center);
-        // towers.push(sun);
-        // container.addChild(sun.src);
-
-        // shit
-        // let shit = new Shit(center);
-        // towers.push(shit);
-        // container.addChild(shit.src);
-
-        // set cell status
-        // terrain[cell.row][cell.col].status = 'unavailable';
     }
-
 }
 
 function buildTower(type, center) {
@@ -868,23 +889,6 @@ function calCell(x, y) {
 }
 
 function getNextTurningPoint(x, y) {
-    // let cell = calCell(x, y);
-    // let r = cell.row, c = cell.col;
-    // let len = land.length;
-    // let result = null;
-    // for (let i = 0;i < len - 1;i++) {
-    //     if (r === land[i].row && c === land[i].col) {
-    //         result = getTerrainCellCenter(land[i].row, land[i].col);
-    //         if (result.x !== x || result.y !== y) return result;
-    //         else return getTerrainCellCenter(land[i + 1].row, land[i + 1].col);
-    //     }
-    //     else if (r === land[i].row && land[i].row === land[i + 1].row && c >= Math.min(land[i].col, land[i + 1].col) && c <= Math.max(land[i].col, land[i + 1].col)) {
-    //         result = getTerrainCellCenter(r, land[i + 1].col);
-    //     }
-    //     else if (c === land[i].col && land[i].col === land[i + 1].col && r >= Math.min(land[i].row, land[i + 1].row) && r <= Math.max(land[i].row, land[i + 1].row)) {
-    //         result = getTerrainCellCenter(land[i + 1].row, c);
-    //     }
-    // }
     // return result;
     let len = landPath.length;
     let result = null;
