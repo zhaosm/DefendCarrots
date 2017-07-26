@@ -20,7 +20,7 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters and towers
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 50;// speed: per second
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 5;// speed: per second
 let monsters = [], towers = [], bullets = [];
 let towerSpeed = 2, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 // navBar
@@ -68,6 +68,20 @@ const carrotData = {
     animations:{
         // start, end, next, speed
         "run": [0, 3, "run",0.2],
+    }
+};
+
+const monsterData = {
+    images:['image/monsters.png'],
+    //frames:{width:26, height:40, count:12, regX:0, regY:0},
+    frames:[
+        // x, y, width, height, imageIndex*, regX*, regY*
+        [0,0,120,118],
+    ],
+//创建动画，动画的名字，以及对应"frames"列表中的哪些帧，也有两种方法
+    animations:{
+        // start, end, next, speed
+        "run": [0, 0, "run",0.2],
     }
 };
 
@@ -500,33 +514,28 @@ class Monster {
         this.bloodHeight = monstersrc.height / 5;
         this.bloodDist = monstersrc.height / 5;
         this.speed = monsterSpeed;
-        let totalHeight = monstersrc.height + this.bloodDist + this.bloodHeight;
-        let dy = totalHeight - cellHeight / 2;
+
+        let center = getTerrainCellCenter(land[0].row, land[0].col);
         let monster = new createjs.Bitmap(monstersrc);
-        monster.x = 0;
-        // relative y corresponding to the monster-container
-        monster.y = this.bloodDist + this.bloodHeight;
+        let monsterBounds = monster.getBounds();
+        monster.regX = monsterBounds.width / 2;
+        monster.regY = monsterBounds.height / 2;
+        monster.x = monster.regX;
+        monster.y = this.bloodHeight + this.bloodDist + monster.regY;
         monster.name = 'monster';
-        // relative y corresponding to the monster-container
+
         let blood = new createjs.Shape();
-        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monster.image.width, this.bloodHeight);
+        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monsterBounds.width, this.bloodHeight);
         blood.name = 'blood';
         // monster-container
         this.src = new createjs.Container();
         // coordinate corresponding to container of the whole stage
-        this.src.x = getLeftTopCoorinate(getTerrainCellCenter(land[0].row, land[0].col), monstersrc.width, totalHeight).x;
-        this.src.y = getTerrainCellCenter(land[0].row, land[0].col).y - dy;
+        this.src.regX = monster.x;
+        this.src.regY = monster.y;
+        this.src.x = center.x;
+        this.src.y = center.y;
         this.src.addChild(blood);
         this.src.addChild(monster);
-        // let time = 1000 * backgroundWidth / 5 / this.speed;
-        // createjs.Tween.get(this.src, {loop: false}).to({y: getTerrainCellCenter(land[1].row, land[1].col).y - dy}, time)
-        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[2].row, land[2].col), monstersrc.width, totalHeight).x}, time)
-        //     .to({y: getTerrainCellCenter(land[3].row, land[3].col).y - dy}, time)
-        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[4].row, land[4].col), monstersrc.width, totalHeight).x}, time)
-        //     .to({y: getTerrainCellCenter(land[5].row, land[5].col).y - dy}, time)
-        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[6].row, land[6].col), monstersrc.width, totalHeight).x}, time)
-        //     .to({y: getTerrainCellCenter(land[7].row, land[7].col).y - dy}, time)
-        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[8].row, land[8].col), monstersrc.width, totalHeight).x}, time);
     }
     updateBlood() {
         if (this.blood < 0) this.blood = 0;
@@ -566,6 +575,7 @@ function init() {
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
         {src: 'image/monster.png', id: 'monster'},
+        {src: 'image/monsters.png', id: 'monsters'},
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
@@ -670,7 +680,6 @@ function updateMonsters() {
     * 生成怪物
     */
     // debug
-    if (monsterTimer % 20 === 0) {
         for (let i = 0; i < monsters.length;) {
             // monster[i].src: the container containing monster bitmap and blood
             // update blood
@@ -706,7 +715,6 @@ function updateMonsters() {
             //     container.removeChild(monsters[i].src);
             //     monsters.splice(i, 1);
             // }
-        }
     }
     if (monsterTimer === 60 || monsterTimer % 300 === 0) generateMonster();
     monsterTimer++;
