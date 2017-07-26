@@ -42,6 +42,7 @@ let land = [
     {row: 1, col: 10},
     {row: 1, col: 4}
 ];
+let landPath = [];
 let barrier = [
     {row: 6, col: 0},
     {row: 6, col: 1},
@@ -124,14 +125,12 @@ class Bottle extends Tower{
         super(...args);
         let bottlesrc = queue.getResult('bottle');
         this.src = new createjs.Bitmap(bottlesrc);
-        // let leftTop = getLeftTopCoorinate(center, bottlesrc.width, bottlesrc.height);
         // bottle should rotate around it's center, so we need to set it's regX and regY to center point,
         // and it's x, y coordinate correspond to it's center's coordinate in stage's coordinate system
         this.src.regX = this.src.image.width / 2;
         this.src.regY = this.src.image.height / 2;
         this.src.x = center.x;
         this.src.y = center.y;
-        // this.speed = backgroundWidth / 2;// per second
     }
     attack(monsterContainer) {
         if (!monsterContainer) return;
@@ -214,7 +213,7 @@ class Shit extends Tower {
         this.src.regY = this.src.image.height / 2;
         this.src.x = center.x;
         this.src.y = center.y;
-        this.power = 0.5;
+        this.power = 0.2;
     }
     attack(monsterContainer) {
         if (!monsterContainer) return;
@@ -249,15 +248,15 @@ class Monster {
         this.src.y = getTerrainCellCenter(land[0].row, land[0].col).y - dy;
         this.src.addChild(blood);
         this.src.addChild(monster);
-        let time = 1000 * backgroundWidth / 5 / this.speed;
-        createjs.Tween.get(this.src, {loop: false}).to({y: getTerrainCellCenter(land[1].row, land[1].col).y - dy}, time)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[2].row, land[2].col), monstersrc.width, totalHeight).x}, time)
-            .to({y: getTerrainCellCenter(land[3].row, land[3].col).y - dy}, time)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[4].row, land[4].col), monstersrc.width, totalHeight).x}, time)
-            .to({y: getTerrainCellCenter(land[5].row, land[5].col).y - dy}, time)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[6].row, land[6].col), monstersrc.width, totalHeight).x}, time)
-            .to({y: getTerrainCellCenter(land[7].row, land[7].col).y - dy}, time)
-            .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[8].row, land[8].col), monstersrc.width, totalHeight).x}, time);
+        // let time = 1000 * backgroundWidth / 5 / this.speed;
+        // createjs.Tween.get(this.src, {loop: false}).to({y: getTerrainCellCenter(land[1].row, land[1].col).y - dy}, time)
+        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[2].row, land[2].col), monstersrc.width, totalHeight).x}, time)
+        //     .to({y: getTerrainCellCenter(land[3].row, land[3].col).y - dy}, time)
+        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[4].row, land[4].col), monstersrc.width, totalHeight).x}, time)
+        //     .to({y: getTerrainCellCenter(land[5].row, land[5].col).y - dy}, time)
+        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[6].row, land[6].col), monstersrc.width, totalHeight).x}, time)
+        //     .to({y: getTerrainCellCenter(land[7].row, land[7].col).y - dy}, time)
+        //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[8].row, land[8].col), monstersrc.width, totalHeight).x}, time);
     }
     updateBlood() {
         if (this.blood < 0) this.blood = 0;
@@ -323,13 +322,8 @@ function showStage() {
     cellWidth = (terrainBound.rightTop.x - terrainBound.leftTop.x) / col * backgroundWidth;
     cellHeight = (terrainBound.leftBottom.y - terrainBound.leftTop.y) / row * backgroundHeight;
     generateTerrain();
+    calLandPath();
     scaleFactor = Math.min(stage.canvas.width / backgroundsrc.width, stage.canvas.height / backgroundsrc.height);
-    // realBackgroundWidth = backgroundsrc.width * scaleFactor;
-    // realBackgroundHeight = backgroundsrc.height * scaleFactor;
-    // realLandWidth = realBackgroundWidth * landWidth;
-
-    // terrainWidth = (terrain.rightTop.x - terrain.leftTop.x) * backgroundsrc.width;
-    // terrainHeight = (terrain.leftBottom.y - terrain.rightBottom.y) * backgroundsrc.height;
 
     container = new createjs.Container();
     container.addChild(background);
@@ -346,11 +340,6 @@ function addCarrot() {
     carrot.y = leftTop.y;
     container.addChild(carrot);
 }
-
-// function modifyScale(img, scaleFactor) {
-//     img.scaleX = scaleFactor;
-//     img.scaleY = scaleFactor;
-// }
 
 function setControllers() {
     background.addEventListener("click", tryBuidingTower);
@@ -369,28 +358,55 @@ function update() {
     updateBullets();
 
     stage.update();
+    // debug
+    console.log('');
 }
 
 function updateMonsters() {
     /*
     * 生成怪物
     */
-    monsterTimer++;
-    if (monsterTimer === 60 || monsterTimer % 300 === 0) generateMonster();
-    for (let i = 0;i < monsters.length;) {
-        // monster[i].src: the container containing monster bitmap and blood
-        // update blood
-        monsters[i].updateBlood();
+    // debug
+    if (monsterTimer % 20 === 0) {
+        for (let i = 0; i < monsters.length;) {
+            // monster[i].src: the container containing monster bitmap and blood
+            // update blood
+            monsters[i].updateBlood();
 
-        let monster = monsters[i].src.getChildByName('monster');
-        let pt = monsters[i].src.localToLocal(monster.x, monster.y, container);
-        let monsterCell = calCell(pt.x, pt.y);
-        if (monsterCell.row === land[land.length - 1].row && monsterCell.col === land[land.length - 1].col) {
-            container.removeChild(monsters[i].src);
-            monsters.splice(i, 1);
+            let monster = monsters[i].src.getChildByName('monster');
+            let center = monsters[i].src.localToLocal(monster.x, monster.y, container);
+            // cell center
+            center.x += monster.image.width / 2;
+            center.y = center.y + monster.image.height - cellHeight / 2;
+            let turningPoint = getNextTurningPoint(center.x, center.y);
+            if (!turningPoint) {
+                container.removeChild(monsters[i].src);
+                monsters.splice(i, 1);
+                continue;
+            }
+            let dx = 0, dy = 0;
+            if (almostEqual(turningPoint.x, center.x)) {
+                dx = turningPoint.x - center.x;
+                if (Math.abs(monsters[i].speed) < Math.abs(turningPoint.y - center.y)) dy = turningPoint.y > center.y ? monsters[i].speed : -monsters[i].speed;
+                else dy = turningPoint.y - center.y;
+            }
+            else if (almostEqual(turningPoint.y, center.y)) {
+                dy = turningPoint.y - center.y;
+                if (Math.abs(monsters[i].speed) < Math.abs(turningPoint.x - center.x)) dx = turningPoint.x > center.x ? monsters[i].speed : -monsters[i].speed;
+                else dx = turningPoint.x - center.x;
+            }
+            monsters[i].src.x += dx;
+            monsters[i].src.y += dy;
+            i++;
+            // let monsterCell = calCell(pt.x, pt.y);
+            // if (monsterCell.row === land[land.length - 1].row && monsterCell.col === land[land.length - 1].col) {
+            //     container.removeChild(monsters[i].src);
+            //     monsters.splice(i, 1);
+            // }
         }
-        else i++;
     }
+    if (monsterTimer === 60 || monsterTimer % 300 === 0) generateMonster();
+    monsterTimer++;
 }
 
 function updateTowers() {
@@ -476,20 +492,6 @@ function deleteMonster(monster) {
 
 // generate things
 function generateMonster() {
-    // let monstersrc = queue.getResult('monster');
-    // let monster = new createjs.Bitmap(monstersrc);
-    // // modifyScale(monster, scaleFactor);
-    // let dy = monstersrc.height - cellHeight / 2;
-    // monster.x = getLeftTopCoorinate(getTerrainCellCenter(land[0].row, land[0].col), monstersrc.width, monstersrc.height).x;
-    // monster.y = getTerrainCellCenter(land[0].row, land[0].col).y - dy;
-    // createjs.Tween.get(monster, {loop: true}).to({y: getTerrainCellCenter(land[1].row, land[1].col).y - dy}, 1000)
-    //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[2].row, land[2].col), monstersrc.width, monstersrc.height).x}, 1000)
-    //     .to({y: getTerrainCellCenter(land[3].row, land[3].col).y - dy}, 1000)
-    //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[4].row, land[4].col), monstersrc.width, monstersrc.height).x}, 1000)
-    //     .to({y: getTerrainCellCenter(land[5].row, land[5].col).y - dy}, 1000)
-    //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[6].row, land[6].col), monstersrc.width, monstersrc.height).x}, 1000)
-    //     .to({y: getTerrainCellCenter(land[7].row, land[7].col).y - dy}, 1000)
-    //     .to({x: getLeftTopCoorinate(getTerrainCellCenter(land[8].row, land[8].col), monstersrc.width, monstersrc.height).x}, 1000);
     let monster = new Monster(1);
     monsters.push(monster);
     container.addChild(monster.src);
@@ -576,6 +578,39 @@ function calCell(x, y) {
     return {row: r, col: c};
 }
 
+function getNextTurningPoint(x, y) {
+    // let cell = calCell(x, y);
+    // let r = cell.row, c = cell.col;
+    // let len = land.length;
+    // let result = null;
+    // for (let i = 0;i < len - 1;i++) {
+    //     if (r === land[i].row && c === land[i].col) {
+    //         result = getTerrainCellCenter(land[i].row, land[i].col);
+    //         if (result.x !== x || result.y !== y) return result;
+    //         else return getTerrainCellCenter(land[i + 1].row, land[i + 1].col);
+    //     }
+    //     else if (r === land[i].row && land[i].row === land[i + 1].row && c >= Math.min(land[i].col, land[i + 1].col) && c <= Math.max(land[i].col, land[i + 1].col)) {
+    //         result = getTerrainCellCenter(r, land[i + 1].col);
+    //     }
+    //     else if (c === land[i].col && land[i].col === land[i + 1].col && r >= Math.min(land[i].row, land[i + 1].row) && r <= Math.max(land[i].row, land[i + 1].row)) {
+    //         result = getTerrainCellCenter(land[i + 1].row, c);
+    //     }
+    // }
+    // return result;
+    let len = landPath.length;
+    let result = null;
+    for (let i = 0;i < len - 1;i++) {
+        if (almostEqual(x, landPath[i].x) && almostEqual(y, landPath[i].y)) {
+            return landPath[i + 1];
+        }
+    }
+    for (let i = 0;i < len - 1;i++) {
+        if (almostEqual(x, landPath[i].x) && almostEqual(landPath[i].x, landPath[i + 1].x) && y >= Math.min(landPath[i].y, landPath[i + 1].y) && y <= Math.max(landPath[i].y, landPath[i + 1].y)) return landPath[i + 1];
+        else if (almostEqual(y, landPath[i].y) && almostEqual(landPath[i].y, landPath[i + 1].y) && x >= Math.min(landPath[i].x, landPath[i + 1].x) && x <= Math.max(landPath[i].x, landPath[i + 1].x)) return landPath[i + 1];
+    }
+    return null;
+}
+
 function isValidCell(r, c) {
     return (r >= 0 && r < row && c >= 0 && c < col);
 }
@@ -584,10 +619,12 @@ function eucDistance(x1, y1, x2, y2) {
     return(Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)));
 }
 
-// function calAngle(origin, p1, p2, unit) {
-//     // unit can be either 'radians' or 'degrees'
-//     p1 = {x: p1.x - origin.x, y: p1.y - origin.y};
-//     p2 = {x: p2.x - origin.x, y: p2.y - origin.y};
-//     if (unit === 'radians') return Math.atan2(p2.y - p1.y, p2.x - p1.x);
-//     if (unit === 'degrees') return Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI;
-// }
+function calLandPath() {
+    let len = land.length;
+    for (let i = 0;i < len;i++) landPath.push(getTerrainCellCenter(land[i].row, land[i].col));
+}
+
+function almostEqual(a, b) {
+    let min = Math.min(cellHeight, cellWidth);
+    return (Math.abs(a - b) <= min / 10)
+}
