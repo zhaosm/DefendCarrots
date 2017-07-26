@@ -114,8 +114,9 @@ class Cell {
         this.type = type;
         this.status = status;
         this.src = new createjs.Bitmap(queue.getResult('available'));
-        this.src.regX = this.src.image.width / 2;
-        this.src.regY = this.src.image.height / 2;
+        let srcBounds = this.src.getBounds();
+        this.src.regX = srcBounds.width / 2;
+        this.src.regY = srcBounds.height / 2;
         this.src.x = center.x;
         this.src.y = center.y;
         this.showing = false;
@@ -148,16 +149,17 @@ class Cell {
         }
         let listWidth = 0;
         for (let i = 0;i < this.priceImgs.length;i++) {
-            listWidth += this.priceImgs[i].image.width;
+            listWidth += this.priceImgs[i].getBounds().width;
         }
         let offset = 0;
         container.addChild(this.src);
         for (let i = 0;i < this.priceImgs.length;i++) {
-            this.priceImgs[i].regX = this.priceImgs[i].image.width / 2;
-            this.priceImgs[i].regY = this.priceImgs[i].image.height / 2;
-            this.priceImgs[i].x = this.src.x - listWidth / 2 + offset + this.priceImgs[i].image.width / 2;
-            this.priceImgs[i].y = this.src.y - this.src.image.height / 2 - this.priceImgs[i].image.height / 2;
-            offset += this.priceImgs[i].image.width;
+            let imgBounds = this.priceImgs[i].getBounds();
+            this.priceImgs[i].regX = imgBounds.width / 2;
+            this.priceImgs[i].regY = imgBounds.height / 2;
+            this.priceImgs[i].x = this.src.x - listWidth / 2 + offset + imgBounds.width / 2;
+            this.priceImgs[i].y = this.src.y - this.src.getBounds().height / 2 - imgBounds.height / 2;
+            offset += imgBounds.width;
             if (availables[i]) {
                 this.priceImgs[i].on('click', function() {
                     buildTower(this.name, {x: this.cell.src.x, y: this.cell.src.y});
@@ -200,8 +202,9 @@ class Tower {
     setIcon(iconName, center) {
         let iconsrc = queue.getResult(iconName);
         this.src = new createjs.Bitmap(iconsrc);
-        this.src.regX = this.src.image.width / 2;
-        this.src.regY = this.src.image.height / 2;
+        let srcBounds = this.src.getBounds();
+        this.src.regX = srcBounds.width / 2;
+        this.src.regY = srcBounds.height / 2;
         this.src.x = center.x;
         this.src.y = center.y;
     }
@@ -216,10 +219,11 @@ class Tower {
         }
     }
     setUpLevelImgPos(img) {
-        img.regX = img.image.width / 2;
-        img.regY = img.image.height / 2;
+        let imgBounds = img.getBounds();
+        img.regX = imgBounds.width / 2;
+        img.regY = imgBounds.height / 2;
         img.x = this.src.x;
-        img.y = this.src.y - this.src.image.height / 2 - img.image.height / 2;
+        img.y = this.src.y - this.src.getBounds().height / 2 - imgBounds.height / 2;
     }
     setIconControl() {
         // icon
@@ -521,7 +525,8 @@ class Monster {
         if (this.blood < 0) this.blood = 0;
         this.src.removeChild(this.src.getChildByName('blood'));
         let blood = new createjs.Shape();
-        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.src.getChildByName('monster').image.width * this.blood, this.bloodHeight);
+        let monsterBounds = this.src.getChildByName('monster').getBounds();
+        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monsterBounds.width * this.blood, this.bloodHeight);
         blood.name = 'blood';
         this.src.addChild(blood);
     }
@@ -554,8 +559,9 @@ class Bullet {
 
         let src = queue.getResult(iconName);
         this.src = new createjs.Bitmap(src);
-        this.src.regX = this.src.image.width / 2;
-        this.src.regY = this.src.image.height / 2;
+        let srcBounds = this.src.getBounds();
+        this.src.regX = srcBounds.width / 2;
+        this.src.regY = srcBounds.height / 2;
         this.src.x = center.x;
         this.src.y = center.y;
         this.src.rotation = rotation;
