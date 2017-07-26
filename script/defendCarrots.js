@@ -12,6 +12,7 @@ $canvas.attr('height', stageHeight + "");
 
 // background and containers
 let stage, queue, background, container;
+let navbar;
 let carrot;
 // background size and scaleFactor
 let backgroundWidth, backgroundHeight, scaleFactor = 0;
@@ -51,17 +52,6 @@ let barrier = [
     {row: 6, col: 10}
 ];
 let terrain = [];
-// let land = [
-//     {x: 0.13, y: 0.31},
-//     {x: 0.13, y: 0.81},
-//     {x: 0.37, y: 0.81},
-//     {x: 0.37, y: 0.56},
-//     {x: 0.7, y: 0.56},
-//     {x: 0.7, y: 0.81},
-//     {x: 0.88, y: 0.81},
-//     {x: 0.88, y: 0.31},
-//     {x: 0.37, y: 0.31}
-// ];
 const carrotData = {
     images:['image/carrotAll.png'],
     //frames:{width:26, height:40, count:12, regX:0, regY:0},
@@ -87,6 +77,22 @@ class Carrot {
         this.src = new createjs.Sprite(this.move,"run");
         this.height = 300;
         this.width = 300;
+    }
+}
+
+class Navbar {
+    constructor() {
+        let navbarsrc = queue.getResult('items');
+        this.src = new createjs.Container();
+        this.bar = new createjs.Bitmap(navbarsrc);
+        this.bar.x = 150;
+        this.bar.y = 0;
+        this.bar.sourceRect = new createjs.Rectangle( 0, 0, 605, 50 );
+        this.src.addChild(this.bar);
+        this.coinText = new createjs.Text(coins,'24px Arial', '#ffffff');
+        this.coinText.x = 205;
+        this.coinText.y = 10;
+        this.src.addChild(this.coinText);
     }
 }
 
@@ -339,7 +345,7 @@ class Monster {
     constructor(type) {
         let monstersrc = queue.getResult('monster');
         this.blood = 1;
-        this.bloodColor = "#21ff3a";
+        this.bloodColor = "#21ff12";
         this.bloodHeight = monstersrc.height / 5;
         this.bloodDist = monstersrc.height / 5;
         this.speed = monsterSpeed;
@@ -407,6 +413,7 @@ function init() {
     stage = new createjs.Stage("myCanvas");
     let manifest = [
         {src: 'image/background.png', id: 'background'},
+        {src: 'image/items.png', id: 'items'},
         {src: 'image/monster.png', id: 'monster'},
         {src: 'image/bottle.png', id: 'bottle'},
         {src: 'image/bottleBullet.png', id: 'bottleBullet'},
@@ -431,6 +438,7 @@ function init() {
 function handleComplete() {
     showStage();
     addCarrot();
+    addNavbar();
     setControllers();
     startGame();
 }
@@ -454,12 +462,19 @@ function showStage() {
 }
 
 function addCarrot() {
-    carrot = new createjs.Bitmap(queue.getResult('carrot'));
+    //carrot = new createjs.Bitmap(queue.getResult('carrot'));
+    carrot = new Carrot();
     let center = getTerrainCellCenter(land[land.length - 1].row, land[land.length - 1].col);
-    let leftTop = getLeftTopCoorinate(center, carrot.image.width, carrot.image.height);
-    carrot.x = leftTop.x;
-    carrot.y = leftTop.y;
-    container.addChild(carrot);
+    let leftTop = getLeftTopCoorinate(center, carrot.width, carrot.height);
+    carrot.src.x = leftTop.x;
+    carrot.src.y = leftTop.y;
+    container.addChild(carrot.src);
+}
+
+function addNavbar()
+{
+    navbar = new Navbar();
+    container.addChild(navbar.src);
 }
 
 function setControllers() {
@@ -477,7 +492,7 @@ function update() {
     updateMonsters();
     updateTowers();
     updateBullets();
-
+    updateNavbar()
     stage.update();
     // debug
     console.log('');
@@ -604,7 +619,8 @@ function updateCarrot() {
 
 
 function updateNavbar() {
-
+    coins++;
+    navbar.coinText.text = coins.toString();
 }
 
 function deleteMonster(monster) {
