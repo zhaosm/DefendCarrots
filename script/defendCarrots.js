@@ -90,6 +90,75 @@ class Carrot {
     }
 }
 
+class Cell {
+    constructor(type, status, center) {
+        this.type = type;
+        this.status = status;
+        this.src = new createjs.Bitmap(queue.getResult('available'));
+        this.src.regX = this.src.image.width / 2;
+        this.src.regY = this.src.image.height / 2;
+        this.src.x = center.x;
+        this.src.y = center.y;
+        this.showing = false;
+    }
+    showChoices() {
+        if (this.showing) {
+            this.hide();
+            return;
+        }
+        let towers = [
+            new Bottle({x: 0, y: 0})// ,
+            // new Sun({x: 0, y: 0}),
+            // new Shit({x: 0, y: 0})
+        ];
+        this.priceImgs = [];
+        let availables = [];
+        for (let tower of towers) {
+            let img = null;
+            if (coins < tower.price) {
+                img = new createjs.Bitmap(queue.getResult(tower.priceImgs[0]));
+                availables.push(false);
+            }
+            else {
+                img = new createjs.Bitmap(queue.getResult(tower.priceImgs[1]));
+                availables.push(true);
+            }
+            img.name = tower.constructor.name;
+            img.cell = this;
+            this.priceImgs.push(img);
+        }
+        let listWidth = 0;
+        for (let i = 0;i < this.priceImgs.length;i++) {
+            listWidth += this.priceImgs[i].image.width;
+        }
+        let offset = 0;
+        container.addChild(this.src);
+        for (let i = 0;i < this.priceImgs.length;i++) {
+            this.priceImgs[i].regX = this.priceImgs[i].image.width / 2;
+            this.priceImgs[i].regY = this.priceImgs[i].image.height / 2;
+            this.priceImgs[i].x = this.src.x - listWidth / 2 + offset + this.priceImgs[i].image.width / 2;
+            this.priceImgs[i].y = this.src.y - this.src.image.height / 2 - this.priceImgs[i].image.height / 2;
+            offset += this.priceImgs[i].image.width;
+            if (availables[i]) {
+                this.priceImgs[i].on('click', function() {
+                    buildTower(this.name, {x: this.cell.src.x, y: this.cell.src.y});
+                    this.cell.status = 'unavailable';
+                    this.cell.hide();
+                })
+            }
+            container.addChild(this.priceImgs[i]);
+        }
+        this.showing = true;
+    }
+    hide() {
+        for (let img of this.priceImgs) {
+            container.removeChild(img);
+        }
+        container.removeChild(this.src);
+        this.showing = false;
+    }
+}
+
 class Tower {
     constructor() {
         this.setParameters();
@@ -103,7 +172,11 @@ class Tower {
         this.price = towerPrice;
         this.upLevelPrices = [];
         this.upLevelImgs = [];
+        this.levelIconNames = [];
         this.upLevelImg = null;
+        this.priceImgs = [];
+    }
+    setLevelIconNames() {
     }
     setIcon(iconName, center) {
         let iconsrc = queue.getResult(iconName);
@@ -118,19 +191,29 @@ class Tower {
         this.upLevelImgs = [];
         for (let src of upLevelSrc) {
             let img = new createjs.Bitmap(src);
-            img.regX = img.image.width / 2;
-            img.regy = img.image.height / 2;
-            img.x = this.src.x;
-            img.y = this.src.y - this.src.regY - img.image.height;
+            this.setUpLevelImgPos(img);
             img.instance = this;
             this.upLevelImgs.push(img);
         }
+    }
+    setUpLevelImgPos(img) {
+        img.regX = img.image.width / 2;
+        img.regY = img.image.height / 2;
+        img.x = this.src.x;
+        img.y = this.src.y - this.src.image.height / 2 - img.image.height / 2;
     }
     setIconControl() {
         // icon
         this.src.instance = this;
         this.src.clickToShowInformation = true;
         this.src.on("click", instanceShowInformation);
+    }
+    resetIcon(iconName) {
+        let oldIcon = this.src;
+        this.setIcon(iconName, {x: oldIcon.x, y: oldIcon.y});
+        this.setIconControl();
+        container.removeChild(oldIcon);
+        container.addChild(this.src);
     }
     initAttackCircle() {
         this.circle = new createjs.Shape();
@@ -166,20 +249,20 @@ class Tower {
         container.addChildAt(this.circle, container.getChildIndex(this.src));
 
         // uplevel icon
-        let ableToUpLevel = false;
-        for (let i = this.upLevelPrices.length - 1;i >= 0;i--) {
-            if (coins >= this.upLevelPrices[i]) {
-                this.upLevelImg = this.upLevelImgs[i * 2 + 1];
-                ableToUpLevel = true;
-                break;
-            }
-        }
-        if (!ableToUpLevel) {
-            this.upLevelImg = this.upLevelImgs[0]
+        if (this.level - 1 === this.upLevelPrices.length) {
+            // max level
+            this.upLevelImg = this.upLevelImgs[this.upLevelImgs.length - 1];
         }
         else {
-            this.upLevelImg.upLevelListener = this.upLevelImg.on('click', instanceUpLevel);
+            if (coins >= this.upLevelPrices[this.level - 1]) {
+                this.upLevelImg = this.upLevelImgs[(this.level - 1) * 2 + 1];
+                this.upLevelImg.upLevelListener = this.upLevelImg.on('click', instanceUpLevel);
+            }
+            else {
+                this.upLevelImg = this.upLevelImgs[(this.level - 1) * 2];
+            }
         }
+        this.setUpLevelImgPos(this.upLevelImg);
         container.addChildAt(this.upLevelImg, container.getChildIndex(this.src));
     }
     hideInformation() {
@@ -190,23 +273,27 @@ class Tower {
     }
     upLevel() {
         this.level++;
+        coins -= this.upLevelPrices[this.level - 2];
+        this.resetIcon(this.levelIconNames[this.level - 1]);
+
         // debug
-        alert('tower uplevel');
-        this.src.clickToShowInformation = true;
+        alert(this.constructor.name + " uplevel, new level: " + this.level + ", coins remain: " + coins);
     }
 }
 
 class Bottle extends Tower{
     constructor(center, ...args) {
         super(...args);
-        this.setIcon('bottle', center);
+        this.setLevelIconNames();
+        this.setIcon(this.levelIconNames[0], center);
         this.setIconControl();
         // level pics
         let upLevelSrc = [
-            queue.getResult('upLevel_180__disable'),
+            queue.getResult('upLevel_180_disable'),
             queue.getResult('upLevel_180_able'),
             queue.getResult('upLevel_260_disable'),
-            queue.getResult('upLevel_260_able')
+            queue.getResult('upLevel_260_able'),
+            queue.getResult('max')
         ];
         this.initUpLevelImgs(upLevelSrc);
         this.initAttackCircle();
@@ -217,8 +304,18 @@ class Bottle extends Tower{
         this.power = 0.25;
         this.price = 100;
         this.upLevelPrices = [180, 260];
+        this.priceImgs = [
+            'bottle_disable',
+            'bottle_able'
+        ]
     }
-
+    setLevelIconNames() {
+        this.levelIconNames = [
+            'bottle_level1',
+            'bottle_level2',
+            'bottle_level3'
+        ];
+    }
     attack(monsterContainer) {
         if (!monsterContainer) return;
         let towerpt = container.localToLocal(this.src.x, this.src.y, container);
@@ -273,7 +370,8 @@ class Sun extends Tower {
             queue.getResult('upLevel_260_disable'),
             queue.getResult('upLevel_260_able'),
             queue.getResult('upLevel_320_disable'),
-            queue.getResult('upLevel_320_able')
+            queue.getResult('upLevel_320_able'),
+            queue.getResult('max')
         ];
         this.initUpLevelImgs(upLevelSrc);
 
@@ -315,7 +413,8 @@ class Shit extends Tower {
             queue.getResult('upLevel_220_disable'),
             queue.getResult('upLevel_220_able'),
             queue.getResult('upLevel_260_disable'),
-            queue.getResult('upLevel_260_able')
+            queue.getResult('upLevel_260_able'),
+            queue.getResult('max')
         ];
         this.initUpLevelImgs(upLevelSrc);
 
@@ -408,7 +507,9 @@ function init() {
     let manifest = [
         {src: 'image/background.png', id: 'background'},
         {src: 'image/monster.png', id: 'monster'},
-        {src: 'image/bottle.png', id: 'bottle'},
+        {src: 'image/bottle_level1.png', id: 'bottle_level1'},
+        {src: 'image/bottle_level2.png', id: 'bottle_level2'},
+        {src: 'image/bottle_level3.png', id: 'bottle_level3'},
         {src: 'image/bottleBullet.png', id: 'bottleBullet'},
         {src: 'image/carrot.png', id: 'carrot'},
         {src: 'image/sunSpriteSheet.png', id: 'sunSpriteSheet'},
@@ -421,7 +522,11 @@ function init() {
         {src: 'image/upLevel_320_able.png', id: 'upLevel_320_able'},
         {src: 'image/upLevel_320_disable.png', id: 'upLevel_320_disable'},
         {src: 'image/upLevel_220_able.png', id: 'upLevel_220_able'},
-        {src: 'image/upLevel_220_disable.png', id: 'upLevel_220_disable'}
+        {src: 'image/upLevel_220_disable.png', id: 'upLevel_220_disable'},
+        {src: 'image/max.png', id: 'max'},
+        {src: 'image/available.png', id: 'available'},
+        {src: 'image/bottle_disable.png', id: 'bottle_disable'},
+        {src: 'image/bottle_able.png', id: 'bottle_able'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
@@ -624,7 +729,7 @@ function generateTerrain() {
         terrain[i] = new Array(col);
         for (let j = 0;j < col;j++) {
             let center = getTerrainCellCenter(i, j);
-            terrain[i][j] = {type: 'openSpace', status: 'available', center: center};
+            terrain[i][j] = new Cell('openSpace', 'available', center)// terrain[i][j] = {type: 'openSpace', status: 'available', center: center};
         }
     }
     for (let i = 0;i < landLen - 1;i++) {
@@ -653,7 +758,8 @@ function tryBuidingTower(event) {
     let x = event.localX, y = event.localY;
     let cell = calCell(x, y);
     if (isValidCell(cell.row, cell.col) && terrain[cell.row][cell.col].status === 'available') {
-        let center = getTerrainCellCenter(cell.row, cell.col);
+        terrain[cell.row][cell.col].showChoices();
+        // let center = getTerrainCellCenter(cell.row, cell.col);
         // bottle
         // let bottle = new Bottle(center);
         // towers.push(bottle);
@@ -665,14 +771,32 @@ function tryBuidingTower(event) {
         // container.addChild(sun.src);
 
         // shit
+        // let shit = new Shit(center);
+        // towers.push(shit);
+        // container.addChild(shit.src);
+
+        // set cell status
+        // terrain[cell.row][cell.col].status = 'unavailable';
+    }
+
+}
+
+function buildTower(type, center) {
+    if (type === 'Bottle') {
+        let bottle = new Bottle(center);
+        towers.push(bottle);
+        container.addChild(bottle.src);
+    }
+    else if (type === 'Sun') {
+        let sun = new Sun(center);
+        towers.push(sun);
+        container.addChild(sun.src);
+    }
+    else if (type === 'Shit') {
         let shit = new Shit(center);
         towers.push(shit);
         container.addChild(shit.src);
-
-        // set cell status
-        terrain[cell.row][cell.col].status = 'unavailable';
     }
-
 }
 
 function instanceShowInformation() {
