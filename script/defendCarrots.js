@@ -421,6 +421,9 @@ class Sun extends Tower {
         this.initUpLevelImgs(upLevelSrc);
 
         this.initAttackCircle();
+
+        // debug
+        // this.attacked = false;
     }
     setParameters() {
         super.setParameters();
@@ -441,11 +444,17 @@ class Sun extends Tower {
         ]
     }
     attack() {
+        // if (this.attacked) return;
         let animation = new createjs.Sprite(this.spriteSheet, 'level1');
         animation.regX = animation.regY = this.radius;
         animation.x = this.src.x;
         animation.y = this.src.y;
+        animation.on('animationend', function() {
+            container.removeChild(this);
+        });
         container.addChild(animation);
+
+        // this.attacked = true;
     }
     findTargets(monsterList) {
         let targets = [];
@@ -778,7 +787,7 @@ function updateTowers() {
             if (tower.constructor.name === 'Bottle' || tower.constructor.name === 'Shit') {
                 tower.attack(tower.findTarget(monsters, center));
             }
-            else if (tower.constructor.name === 'Sun' && towerTimer % 200 === 0) {
+            else if (tower.constructor.name === 'Sun' && towerTimer % 60 === 0) {
                 let targets = tower.findTargets(monsters);
                 if (targets.length) {
                     for (let monsterContainer of monsters) {
