@@ -20,7 +20,9 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters and towers
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1;// speed: per second
+
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 5;// speed: per second
+
 let monsters = [], towers = [], bullets = [];
 let towerSpeed = 2, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 // navBar
@@ -55,6 +57,20 @@ let barrier = [
 ];
 let terrain = [];
 let carrotData;
+
+const monsterData = {
+    images:['image/monsters.png'],
+    //frames:{width:26, height:40, count:12, regX:0, regY:0},
+    frames:[
+        // x, y, width, height, imageIndex*, regX*, regY*
+        [0,0,120,118],
+    ],
+//创建动画，动画的名字，以及对应"frames"列表中的哪些帧，也有两种方法
+    animations:{
+        // start, end, next, speed
+        "run": [0, 0, "run",0.2],
+    }
+};
 
 // classes
 class Carrot {
@@ -582,6 +598,7 @@ function init() {
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
         {src: 'image/monster.png', id: 'monster'},
+        {src: 'image/monsters.png', id: 'monsters'},
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
@@ -712,7 +729,6 @@ function updateMonsters() {
     * 生成怪物
     */
     // debug
-    if (monsterTimer % 1 === 0) {
         for (let i = 0; i < monsters.length;) {
             // monster[i].src: the container containing monster bitmap and blood
             // update blood
@@ -747,7 +763,6 @@ function updateMonsters() {
             //     container.removeChild(monsters[i].src);
             //     monsters.splice(i, 1);
             // }
-        }
     }
     if (monsterTimer === 60 || monsterTimer % 300 === 0) generateMonster();
     monsterTimer++;
