@@ -21,7 +21,7 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters, barriers and towers
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1, speedFactor = 1;// speed: per second
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 50, speedFactor = 1;// speed: per second
 
 let monsters = [], towers = [], bullets = [];
 let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
@@ -71,6 +71,41 @@ class Carrot {
         this.move = new createjs.SpriteSheet(carrotData);
         //SpriteSheet类设置帧和动画,里面的run为开始的动画
         this.src = new createjs.Sprite(this.move,"run");
+        this.lifeCard = new createjs.Bitmap(queue.getResult('10lifesCard'));
+        let cardBounds = this.lifeCard.getBounds();
+    }
+    updateLife(life) {
+        if (life <= 0 || life > 10) return;
+        let center = {x: this.src.x, y: this.src.y};
+        container.removeChild(this.src);
+        if (life === 9) {
+            this.src = new createjs.Bitmap(queue.getResult('9lifes'));
+        }
+        else if(life === 8 || life === 7) {
+            this.src = new createjs.Bitmap(queue.getResult('8lifes'));
+        }
+        else if(life === 6 || life === 5) {
+            this.src = new createjs.Bitmap(queue.getResult('6lifes'));
+        }
+        else if(life > 1) {
+            this.src = new createjs.Bitmap(queue.getResult(life + 'lifes'));
+        }
+        else this.src = new createjs.Bitmap(queue.getResult(life + 'life'));
+        let srcBounds = this.src.getBounds();
+        this.src.regX = srcBounds.width / 2;
+        this.src.regY = srcBounds.height / 2;
+        this.src.x = center.x;
+        this.src.y = center.y;
+        container.addChild(this.src);
+
+        let cardName = life > 1 ? (life + 'lifesCard') : (life + 'lifeCard');
+        let newCard = new createjs.Bitmap(queue.getResult(cardName));
+        newCard.regX = this.lifeCard.regX;
+        newCard.regY = this.lifeCard.regY;
+        newCard.x = this.lifeCard.x;
+        newCard.y = this.lifeCard.y;
+        container.removeChild(this.lifeCard);
+        container.addChild(newCard);
     }
 }
 
@@ -1075,7 +1110,24 @@ function init() {
         {src: 'image/stump.png', id: 'stump'},
         {src: 'image/windMillBase.png', id: 'windMillBase'},
         {src: 'image/windMillFans.png', id: 'sindMillFans'},
-        {src: 'image/windMill.png', id: 'windMill'}
+        {src: 'image/windMill.png', id: 'windMill'},
+        {src: 'image/1life.png', id: '1life'},
+        {src: 'image/2lifes.png', id: '2lifes'},
+        {src: 'image/3lifes.png', id: '3lifes'},
+        {src: 'image/4lifes.png', id: '4lifes'},
+        {src: 'image/6lifes.png', id: '6lifes'},
+        {src: 'image/8lifes.png', id: '8lifes'},
+        {src: 'image/9lifes.png', id: '9lifes'},
+        {src: 'image/1lifeCard.png', id: '1lifeCard'},
+        {src: 'image/2lifesCard.png', id: '2lifesCard'},
+        {src: 'image/3lifesCard.png', id: '3lifesCard'},
+        {src: 'image/4lifesCard.png', id: '4lifesCard'},
+        {src: 'image/5lifesCard.png', id: '5lifesCard'},
+        {src: 'image/6lifesCard.png', id: '6lifesCard'},
+        {src: 'image/7lifesCard.png', id: '7lifesCard'},
+        {src: 'image/8lifesCard.png', id: '8lifesCard'},
+        {src: 'image/9lifesCard.png', id: '9lifesCard'},
+        {src: 'image/10lifesCard.png', id: '10lifesCard'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', prepareToStart);
@@ -1145,6 +1197,13 @@ function addCarrot() {
     carrot.src.x = center.x;
     carrot.src.y = center.y + cellHeight / 2 - cellHeight / 5 - frameBounds.height / 2;
     container.addChild(carrot.src);
+
+    let cardBounds = carrot.lifeCard.getBounds();
+    carrot.lifeCard.regX = cardBounds.width / 2;
+    carrot.lifeCard.regY = cardBounds.height / 2;
+    carrot.lifeCard.x = center.x - frameBounds.width / 2 - cardBounds.width / 2;
+    carrot.lifeCard.y = center.y - frameBounds.height / 2;
+    container.addChild(carrot.lifeCard);
 }
 
 function addNavbar() {
@@ -1170,8 +1229,9 @@ function startGame() {
 
 function decreaseLife() {
     life--;
+    carrot.updateLife(life);
     // debug
-    alert('life remain: ' + life);
+    // alert('life remain: ' + life);
 }
 
 function fail() {
