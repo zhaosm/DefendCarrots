@@ -14,6 +14,7 @@ $canvas.attr('height', stageHeight + "");
 let status;//1=running 0=stop
 // background and containers
 let stage, queue, background, container;
+let tempQueue;
 let carrot;
 // background size and scaleFactor
 let backgroundWidth, backgroundHeight, scaleFactor = 0;
@@ -57,6 +58,8 @@ let barrier = [
 ];
 let terrain = [];
 let carrotData;
+
+let startSceneSrc;
 
 const monsterData = {
     images:['image/monsters.png'],
@@ -660,7 +663,6 @@ class Monster {
         this.speed = Math.max(this.speed * (1 - power), 0);
         this.isSlowDown = true;
         this.slowDownTimer = 0;
-
         this.addSlowDownSprite();
     }
     speedUp() {
@@ -821,9 +823,32 @@ class Poo extends Bullet {
     }
 }
 
+function initstart() {
+    stage = new createjs.Stage("myCanvas");
+    tempQueue = new createjs.LoadQueue();
+    tempQueue.on('complete', start);
+    tempQueue.loadManifest([{src: 'image/startScene.png', id: 'startScene'},]);
+    console.log("initstart");
+}
+
+
+function start(){
+    startSceneSrc = tempQueue.getResult('startScene');
+    let bg = new createjs.Bitmap(startSceneSrc);
+    container = new createjs.Container();
+    stage.addChild(container);
+    backgroundWidth = startSceneSrc.width;
+    backgroundHeight = startSceneSrc.height;
+    //setParametersRelatedToBackgroundSize();
+    scaleFactor = Math.min(stage.canvas.width / startSceneSrc.width, stage.canvas.height / startSceneSrc.height);
+    container.addChild(bg);
+    container.scaleX = scaleFactor;
+    container.scaleY = scaleFactor;
+    stage.update();
+    init();
+}
 // control
 function init() {
-    stage = new createjs.Stage("myCanvas");
     let manifest = [
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
@@ -885,15 +910,13 @@ function showStage() {
     background = new createjs.Bitmap(backgroundsrc);
     backgroundWidth = backgroundsrc.width;
     backgroundHeight = backgroundsrc.height;
-    setParametersRelatedToBackgroundSize()
+    setParametersRelatedToBackgroundSize();
 
     scaleFactor = Math.min(stage.canvas.width / backgroundsrc.width, stage.canvas.height / backgroundsrc.height);
 
-    container = new createjs.Container();
     container.addChild(background);
     container.scaleX = scaleFactor;
     container.scaleY = scaleFactor;
-    stage.addChild(container);
 }
 
 function setParametersRelatedToBackgroundSize() {
@@ -1218,7 +1241,6 @@ function stopOrContinue(event){
         status = 0;
     }
 }
-
 
 // calculations
 function getTerrainCellCenter(r, c) {
