@@ -316,6 +316,7 @@ class Tower {
     }
     attack(monsterContainer) {
         if (!monsterContainer) return;
+        if (this.constructor.name === 'Shit' && monsterContainer.isSlowDown) return;
         let attackParameters = this.calAttackParameters(monsterContainer);
         // this.src.rotation = attackParameters.degree;
         let bullet = null;
@@ -476,7 +477,7 @@ class Sun extends Tower {
             'sun_level3'
         ]
     }
-    attack() {
+    attack(monsterContainer) {
         // if (this.attacked) return;
         let animation = new createjs.Sprite(this.spriteSheet, 'level1');
         animation.regX = animation.regY = this.radius;
@@ -486,8 +487,7 @@ class Sun extends Tower {
             container.removeChild(this);
         });
         container.addChild(animation);
-
-        // this.attacked = true;
+        monsterContainer.blood -= this.power;
     }
     findTargets(monsterList) {
         let targets = [];
@@ -562,6 +562,10 @@ class Monster {
         this.slowDownTimer = 0;
         this.isSlowDown = false;
         this.createSlowDownSpriteSheet();
+        this.setValue(14);
+    }
+    setValue(value) {
+        this.value = value;
     }
     createSlowDownSpriteSheet() {
         let data = {
@@ -835,7 +839,7 @@ class Poo extends Bullet {
         this.power = 0.3 * level;
     }
     attack(monsterContainer) {
-        monsterContainer.slowDown(this.power);
+        if (!monsterContainer.isSlowDown) monsterContainer.slowDown(this.power);
     }
 }
 
@@ -901,6 +905,11 @@ class Barrier{
         this.dieSpriteSheet = new createjs.SpriteSheet(dieData);
 
         this.cells = cells;
+
+        this.setValue(50);
+    }
+    setValue(value) {
+        this.value = value;
     }
     createSrc(srcName) {
         // return src instance
@@ -1147,6 +1156,7 @@ function updateMonsters() {
             if (monsters[i].blood <= 0) {
                 container.removeChild(monsters[i].src);
                 monsters[i].die();
+                coins += monsters[i].value;
                 monsters.splice(i, 1);
                 continue;
             }
@@ -1206,6 +1216,7 @@ function updateBarriers() {
         if (barriers[i].blood <= 0) {
             container.removeChild(barriers[i].src);
             barriers[i].die();
+            coins += barriers[i].value;
             barriers.splice(i, 1);
             continue;
         }
@@ -1238,7 +1249,6 @@ function updateTowers() {
                     if (targets.length) {
                         for (let monsterContainer of monsters) {
                             tower.attack(monsterContainer);
-                            monsterContainer.blood -= tower.power;
                         }
                     }
                 }
@@ -1248,7 +1258,10 @@ function updateTowers() {
     }
     else {
         for (let tower of towers) {
-            if (towerTimer % 10 === 0 && eucDistance(tower.src.x, tower.src.y, targetBarrier.src.x, targetBarrier.src.y) <= tower.radius) tower.attack(targetBarrier);
+            if (towerTimer % 10 === 0 && eucDistance(tower.src.x, tower.src.y, targetBarrier.src.x, targetBarrier.src.y) <= tower.radius) {
+                if (tower.constructor.name === 'Sun' && towerTimer % 40 === 0) tower.attack(targetBarrier);
+                else if (tower.constructor.name === 'Bottle' || tower.constructor.name === 'Shit') tower.attack(targetBarrier);
+            }
         }
     }
 }
@@ -1482,21 +1495,19 @@ function tryBuildingTower(event) {
 }
 
 function buildTower(type, center) {
+    let tower = null;
     if (type === 'Bottle') {
-        let bottle = new Bottle(center);
-        towers.push(bottle);
-        container.addChild(bottle.src);
+        tower = new Bottle(center);
     }
     else if (type === 'Sun') {
-        let sun = new Sun(center);
-        towers.push(sun);
-        container.addChild(sun.src);
+        tower = new Sun(center);
     }
     else if (type === 'Shit') {
-        let shit = new Shit(center);
-        towers.push(shit);
-        container.addChild(shit.src);
+        tower = new Shit(center);
     }
+    towers.push(tower);
+    container.addChild(tower.src);
+    coins -= tower.price;
 }
 
 function instanceShowInformation() {
