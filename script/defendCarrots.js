@@ -20,7 +20,6 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters and towers
-
 let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1, speedFactor = 1;// speed: per second
 
 let monsters = [], towers = [], bullets = [];
@@ -48,13 +47,16 @@ let land = [
     {row: 1, col: 4}
 ];
 let landPath = [];
-let barrier = [
+let barrierCells = [
     {row: 6, col: 0},
     {row: 6, col: 1},
     {row: 6, col: 8},
     {row: 6, col: 9},
-    {row: 6, col: 10}
+    {row: 6, col: 10},
+    {row: 4, col: 0},
+    {row: 5, col: 0}
 ];
+let barriers = [];
 let terrain = [];
 let carrotData;
 
@@ -821,6 +823,40 @@ class Poo extends Bullet {
     }
 }
 
+class Barrier {
+    constructor(center, cells, srcName) {
+        let icon = this.createSrc(srcName);
+        let iconBounds = icon.getBounds();
+        icon.regX = iconBounds.width / 2;
+        icon.regY = iconBounds.height / 2;
+        this.bloodHeight = iconBounds.height / 5;
+        this.bloodDist = iconBounds.height / 5;
+        icon.x = icon.regX;
+        icon.y = this.bloodHeight + this.bloodDist + icon.regY;
+        icon.name = 'icon';
+
+        this.blood = 1;
+        this.bloodColor = "#21ff12";
+        let blood = new createjs.Shape();
+        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, iconBounds.width, this.bloodHeight);
+        blood.name = 'blood';
+
+        this.src = new createjs.Container();
+        this.src.regX = icon.regX;
+        this.src.regY = icon.y;
+        this.src.x = center.x;
+        this.src.y = center.y;
+        this.src.addChild(icon);
+        this.src.addChild(blood);
+
+        this.cells = cells;
+    }
+    createSrc(srcName) {
+        // return src instance
+        return new createjs.Bitmap(queue.getResult(srcName));
+    }
+}
+
 // control
 function init() {
     stage = new createjs.Stage("myCanvas");
@@ -865,7 +901,20 @@ function init() {
         {src: 'image/monsterNormalSpriteSheet.png', id: 'monsterNormalSpriteSheet'},
         {src: 'image/monsterFastSpriteSheet.png', id: 'monsterFastSpriteSheet'},
         {src: 'image/monsterSlowSpriteSheet.png', id: 'monsterSlowSpriteSheet'},
-        {src: 'image/slowDownSpriteSheet.png', id: 'slowDownSpriteSheet'}
+        {src: 'image/slowDownSpriteSheet.png', id: 'slowDownSpriteSheet'},
+        {src: 'image/ladybug.png', id: 'ladybug'},
+        {src: 'image/largeStone.png', id: 'largeStone'},
+        {src: 'image/largeTreasureBox.png', id: 'largeTreasureBox'},
+        {src: 'image/largeTree.png', id: 'largeTree'},
+        {src: 'image/monsterBoard.png', id: 'monsterBoard'},
+        {src: 'image/smallStone.png', id: 'smallStone'},
+        {src: 'image/smallTreasureBox1.png', id: 'smallTreasureBox1'},
+        {src: 'image/smallTreasureBox2.png', id: 'smallTreasureBox2'},
+        {src: 'image/smallTree.png', id: 'smallTree'},
+        {src: 'image/stump.png', id: 'stump'},
+        {src: 'image/windMillBase.png', id: 'windMillBase'},
+        {src: 'image/windMillFans.png', id: 'sindMillFans'},
+        {src: 'image/windMill.png', id: 'windMill'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
@@ -885,7 +934,7 @@ function showStage() {
     background = new createjs.Bitmap(backgroundsrc);
     backgroundWidth = backgroundsrc.width;
     backgroundHeight = backgroundsrc.height;
-    setParametersRelatedToBackgroundSize()
+    setParametersRelatedToBackgroundSize();
 
     scaleFactor = Math.min(stage.canvas.width / backgroundsrc.width, stage.canvas.height / backgroundsrc.height);
 
@@ -894,6 +943,8 @@ function showStage() {
     container.scaleX = scaleFactor;
     container.scaleY = scaleFactor;
     stage.addChild(container);
+
+    generateBarriers();
 }
 
 function setParametersRelatedToBackgroundSize() {
@@ -1126,7 +1177,7 @@ function generateMonster(type) {
 }
 
 function generateTerrain() {
-    let topX = terrainBound.leftTop.x, topY = terrainBound.leftTop.y, landLen = land.length, berrierNum = barrier.length;
+    let topX = terrainBound.leftTop.x, topY = terrainBound.leftTop.y, landLen = land.length, berrierNum = barrierCells.length;
     for (let i = 0;i < row;i++) {
         terrain[i] = new Array(col);
         for (let j = 0;j < col;j++) {
@@ -1149,10 +1200,99 @@ function generateTerrain() {
             }
         }
     }
-    for (let b of barrier) {
-        terrain[b.row][b.col].type = 'barrier';
+    for (let b of barrierCells) {
+        terrain[b.row][b.col].type = 'barrierCells';
         terrain[b.row][b.col].status = 'unavailable';
     }
+}
+
+function generateBarriers() {
+    let center = {x: getTerrainCellCenter(4, 0).x, y: (getTerrainCellCenter(4, 0).y + getTerrainCellCenter(5, 0).y) / 2};
+    let cells = [
+        {row: 0, col: 4},
+        {row: 0, col: 5}
+    ];
+    let barrier = new Barrier(center, cells, 'smallStone');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = {x: (getTerrainCellCenter(4, 3).x + getTerrainCellCenter(4, 2).x) / 2, y: (getTerrainCellCenter(3, 3).y + getTerrainCellCenter(4, 3).y) / 2};
+    cells = [
+        {row: 3, col: 2},
+        {row: 3, col: 3},
+        {row: 4, col: 2},
+        {row: 4, col: 3},
+    ];
+    barrier = new Barrier(center, cells, 'largeTreasureBox');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = {x: (getTerrainCellCenter(2, 2).x + getTerrainCellCenter(2, 3).x) / 2, y: getTerrainCellCenter(2, 2).y};
+    cells = [
+        {row: 2, col: 2},
+        {row: 2, col: 3},
+        {row: 3, col: 2},
+        {row: 3, col: 3}
+    ];
+    barrier = new Barrier(center, cells, 'largeTree');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = getTerrainCellCenter(0, 6);
+    cells = [{row: 0, col: 6}];
+    barrier = new Barrier(center, cells, 'ladybug');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = getTerrainCellCenter(2, 7);
+    cells = [{row: 2, col: 7}];
+    barrier = new Barrier(center, cells, 'smallTreasureBox1');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = {x: (getTerrainCellCenter(4, 6).x + getTerrainCellCenter(4, 7).x) / 2, y: (getTerrainCellCenter(3, 6).y + getTerrainCellCenter(4, 6).y) / 2};
+    cells = [
+        {row: 3, col: 6},
+        {row: 3, col: 7},
+        {row: 4, col: 6},
+        {row: 4, col: 7}
+    ];
+    barrier = new Barrier(center, cells, 'windMill');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = {x: (getTerrainCellCenter(2, 8).x + getTerrainCellCenter(2, 9).x) / 2, y: getTerrainCellCenter(2, 8).y};
+    cells = [
+        {row: 2, col: 8},
+        {row: 2, col: 9}
+    ];
+    barrier = new Barrier(center, cells, 'largeStone');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = getTerrainCellCenter(4, 9);
+    cells = [{row: 10, col: 9}];
+    barrier = new Barrier(center, cells, 'smallTreasureBox2');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = getTerrainCellCenter(0, 10);
+    cells = [{row: 0, col: 10}];
+    barrier = new Barrier(center, cells, 'stump');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = getTerrainCellCenter(1, 11);
+    cells = [{row: 1, col: 11}];
+    barrier = new Barrier(center, cells, 'smallTree');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = getTerrainCellCenter(3, 11);
+    cells = [{row: 3, col: 11}];
+    barrier = new Barrier(center, cells, 'ladybug');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
 }
 
 // event handlers
