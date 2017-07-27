@@ -197,6 +197,12 @@ class List {
         this.src.scaleX = 1.5;
         this.src.scaleY = 1.5;
 
+        let transparentLayer = new createjs.Shape();
+        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth, backgroundHeight);
+        transparentLayer.alpha = 0.3;
+        transparentLayer.on('click', function(){});
+        this.src.addChild(transparentLayer);
+
         let listsrc = queue.getResult('list');
         this.listBackground = new createjs.Bitmap(listsrc);
         this.listBackground.x = 180;
@@ -991,6 +997,10 @@ class Barrier{
         this.dieSpriteSheet = new createjs.SpriteSheet(dieData);
 
         this.cells = cells;
+        for (let cell of this.cells ){
+            terrain[cell.row][cell.col].type = 'barrier';
+            terrain[cell.row][cell.col].status = 'unavailable';
+        }
 
         this.setValue(50);
     }
@@ -1025,6 +1035,11 @@ class Barrier{
             container.removeChild(this);
         });
         container.addChild(animation);
+
+        for (let cell of this.cells ){
+            terrain[cell.row][cell.col].type = 'openSpace';
+            terrain[cell.row][cell.col].status = 'available';
+        }
     }
     stopShootingThis() {
         this.shootThis = false;
@@ -1634,7 +1649,7 @@ function generateBarriers() {
     barriers.push(barrier);
 
     center = getTerrainCellCenter(4, 9);
-    cells = [{row: 10, col: 9}];
+    cells = [{row: 4, col: 9}];
     barrier = new Barrier(center, cells, 'smallTreasureBox2');
     container.addChild(barrier.src);
     barriers.push(barrier);
