@@ -21,7 +21,7 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters and towers
 
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1;// speed: per second
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1, speedFactor = 1;// speed: per second
 
 let monsters = [], towers = [], bullets = [];
 let towerSpeed = 2, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
@@ -533,27 +533,43 @@ class Shit extends Tower {
 }
 
 class Monster {
-    constructor(type) {
-        let monstersrc = queue.getResult('monster');
+    constructor() {
+        let monster = this.createSprite();
+        let monsterBounds = monster.getBounds();
+        this.setBloodParameters(monsterBounds);
+        this.setSpriteParameters(monster);
+        let blood = this.createBlood(monsterBounds);
+        this.setContainer(monster, blood);
+        this.setDieSprite();
+        this.speed = monsterSpeed;
+    }
+    createSprite() {
+        // return the sprite instance
+    }
+    setBloodParameters(monsterBounds) {
         this.blood = 1;
         this.bloodColor = "#21ff12";
-        this.bloodHeight = monstersrc.height / 5;
-        this.bloodDist = monstersrc.height / 5;
-        this.speed = monsterSpeed;
-
-        let center = getTerrainCellCenter(land[0].row, land[0].col);
-        let monster = new createjs.Bitmap(monstersrc);
+        this.bloodHeight = monsterBounds.height / 5;
+        this.bloodDist = monsterBounds.height / 5;
+    }
+    setSpriteParameters(monster) {
         let monsterBounds = monster.getBounds();
+        // let center = getTerrainCellCenter(land[0].row, land[0].col);
+        // let monster = new createjs.Bitmap(monstersrc);
+        // let monsterBounds = monster.getBounds();
         monster.regX = monsterBounds.width / 2;
         monster.regY = monsterBounds.height / 2;
         monster.x = monster.regX;
         monster.y = this.bloodHeight + this.bloodDist + monster.regY;
         monster.name = 'monster';
-
+    }
+    createBlood(monsterBounds) {
         let blood = new createjs.Shape();
         blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monsterBounds.width, this.bloodHeight);
         blood.name = 'blood';
-        // monster-container
+    }
+    setContainer(monster, blood) {
+        let center = getTerrainCellCenter(land[0].row, land[0].col);
         this.src = new createjs.Container();
         // coordinate corresponding to container of the whole stage
         this.src.regX = monster.x;
@@ -563,6 +579,26 @@ class Monster {
         this.src.addChild(blood);
         this.src.addChild(monster);
     }
+    setDieSprite() {
+        let dieData = {
+            "images": [
+                queue.getResult("monsterDieSpriteSheet")
+            ],
+            "frames": [
+                [1, 1, 175, 178],
+                [178, 1, 175, 178],
+                [355, 1, 175, 178],
+                [532, 1, 175, 178]
+            ],
+            "animations": {
+                "monsterDie": {
+                    "frames": [0, 1, 2, 3],
+                    'speed': .3
+                }
+            }
+        };
+        this.dieSpriteSheet = new createjs.SpriteSheet(dieData);
+    }
     updateBlood() {
         if (this.blood < 0) this.blood = 0;
         this.src.removeChild(this.src.getChildByName('blood'));
@@ -571,6 +607,114 @@ class Monster {
         blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monsterBounds.width * this.blood, this.bloodHeight);
         blood.name = 'blood';
         this.src.addChild(blood);
+    }
+    die() {
+        let animation = new createjs.Sprite(this.dieSpriteSheet, 'monsterDie');
+        let spriteBounds = animation.getBounds();
+        animation.regX = spriteBounds.width / 2;
+        animation.regY = spriteBounds.height / 2;
+        animation.x = this.src.x;
+        animation.y = this.src.y;
+        animation.on('animationend', function() {
+            container.removeChild(this);
+        });
+        container.addChild(animation);
+    }
+}
+
+class NormalMonster extends Monster {
+    constructor(...args) {
+        super(...args);
+        this.speed = monsterSpeed;
+    }
+    createSprite() {
+        let monsterData = {
+            "images": [
+                queue.getResult('monsterNormalSpriteSheet')
+            ],
+            "frames": [
+                [1, 1, 83, 56, 0, 0, 0],
+                [86, 1, 83, 56, 0, 0, 0],
+                [171, 1, 83, 56, 0, 0, 0]
+            ],
+
+            "animations": {
+                "monsterNormal": {
+                    "frames": [0, 1, 2],
+                    'speed': .1
+                }
+            }
+
+        };
+        this.originSpriteSheet = new createjs.SpriteSheet(monsterData);
+        return new createjs.Sprite(this.originSpriteSheet, 'monsterNormal');
+    }
+}
+
+class FastMonster extends Monster {
+    constructor(...args) {
+        super(...args);
+        this.speed = monsterSpeed * 2;
+    }
+    createSprite() {
+        let monsterData = {
+            "images": [
+                queue.getResult('monsterFastSpriteSheet')
+            ],
+            "frames": [
+                [1, 1, 74, 58, 0, 0, 0],
+                [77, 1, 74, 58, 0, 0, 0],
+                [153, 1, 74, 58, 0, 0, 0]
+            ],
+
+            "animations": {
+                "monsterFast": {
+                    "frames": [0, 1, 2],
+                    'speed': .1
+                }
+            }
+        };
+        this.originSpriteSheet = new createjs.SpriteSheet(monsterData);
+        return new createjs.Sprite(this.originSpriteSheet, 'monsterFast');
+    }
+    setSpriteParameters(monster) {
+        let monsterBounds = monster.getBounds();
+        // let center = getTerrainCellCenter(land[0].row, land[0].col);
+        // let monster = new createjs.Bitmap(monstersrc);
+        // let monsterBounds = monster.getBounds();
+        monster.regX = monsterBounds.width * 0.66;
+        monster.regY = monsterBounds.height * 0.81;
+        monster.x = monster.regX;
+        monster.y = this.bloodHeight + this.bloodDist + monster.regY;
+        monster.name = 'monster';
+    }
+}
+
+class SlowMonster extends Monster {
+    constructor(...args) {
+        super(...args);
+        this.speed = monsterSpeed / 2;
+    }
+    createSprite() {
+        let monsterData = {
+            "images": [
+                queue.getResult('monsterSlowSpriteSheet')
+            ],
+
+            "frames": [
+                [1, 1, 53, 57, 0, 0, 0],
+                [56, 1, 53, 57, 0, 0, 0]
+            ],
+
+            "animations": {
+                "monsterSlow": {
+                    "frames": [0, 1],
+                    'speed': .1
+                }
+            }
+        };
+        this.originSpriteSheet = new createjs.SpriteSheet(monsterData);
+        return new createjs.Sprite(this.originSpriteSheet, 'monsterSlow');
     }
 }
 
@@ -625,8 +769,6 @@ function init() {
     let manifest = [
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
-        {src: 'image/monster.png', id: 'monster'},
-        {src: 'image/monsters.png', id: 'monsters'},
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
@@ -660,7 +802,11 @@ function init() {
         {src: 'image/poo_level1.png', id: 'poo_level1'},
         {src: 'image/poo_level2.png', id: 'poo_level2'},
         {src: 'image/poo_level3.png', id: 'poo_level3'},
-        {src: 'image/carrotAll.png', id: 'carrotAll'}
+        {src: 'image/carrotAll.png', id: 'carrotAll'},
+        {src: 'image/monsterDieSpriteSheet.png', id: 'monsterDieSpriteSheet'},
+        {src: 'image/monsterNormalSpriteSheet.png', id: 'monsterNormalSpriteSheet'},
+        {src: 'image/monsterFastSpriteSheet.png', id: 'monsterFastSpriteSheet'},
+        {src: 'image/monsterSlowSpriteSheet.png', id: 'monsterSlowSpriteSheet'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
@@ -758,6 +904,13 @@ function updateMonsters() {
     */
     // debug
         for (let i = 0; i < monsters.length;) {
+            if (monsters[i].blood <= 0) {
+                container.removeChild(monsters[i].src);
+                monsters[i].die();
+                monsters.splice(i, 1);
+                continue;
+            }
+
             // monster[i].src: the container containing monster bitmap and blood
             // update blood
             monsters[i].updateBlood();
@@ -792,7 +945,15 @@ function updateMonsters() {
             //     monsters.splice(i, 1);
             // }
     }
-    if (monsterTimer === 60 || monsterTimer % 300 === 0) generateMonster();
+    if (monsterTimer === 60 || monsterTimer % 300 === 0) {
+        if (monsterTimer / 300 % 3 === 0) {
+            generateMonster('slow');
+        }
+        else if (monsterTimer / 300 % 3 === 1) {
+            generateMonster('normal');
+        }
+        else generateMonster('fast');
+    }
     monsterTimer++;
 }
 
@@ -873,14 +1034,24 @@ function updateNavbar() {
 }
 
 function deleteMonster(monster) {
-
 }
 
 // generate things
-function generateMonster() {
-    let monster = new Monster(1);
-    monsters.push(monster);
-    container.addChild(monster.src);
+function generateMonster(type) {
+    let monster = null;
+    if (type === 'slow') {
+        monster = new SlowMonster();
+    }
+    else if (type === 'normal') {
+        monster = new NormalMonster();
+    }
+    else if (type === 'fast') {
+        monster = new FastMonster();
+    }
+    if (monster) {
+        monsters.push(monster);
+        container.addChild(monster.src);
+    }
 }
 
 function generateTerrain() {
