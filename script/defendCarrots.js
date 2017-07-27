@@ -27,7 +27,7 @@ let monsters = [], towers = [], bullets = [];
 let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 let bloodWidth, bloodHeight;
 // navBar
-let navbar;
+let navbar, list;
 let life = 10, coins = 5000;
 let speed = 1;
 
@@ -65,28 +65,12 @@ let carrotData;
 
 let startSceneSrc, startButtonSrc;
 
-const monsterData = {
-    images:['image/monsters.png'],
-    //frames:{width:26, height:40, count:12, regX:0, regY:0},
-    frames:[
-        // x, y, width, height, imageIndex*, regX*, regY*
-        [0,0,120,118],
-    ],
-//创建动画，动画的名字，以及对应"frames"列表中的哪些帧，也有两种方法
-    animations:{
-        // start, end, next, speed
-        "run": [0, 0, "run",0.2],
-    }
-};
-
 // classes
 class Carrot {
     constructor() {
         this.move = new createjs.SpriteSheet(carrotData);
         //SpriteSheet类设置帧和动画,里面的run为开始的动画
         this.src = new createjs.Sprite(this.move,"run");
-        // this.height = 300;
-        // this.width = 300;
     }
 }
 
@@ -127,6 +111,7 @@ class Navbar {
         this.listButton.sourceRect = new createjs.Rectangle(1143, 475, 40, 40);
         this.listButton.scaleX = 1.5;
         this.listButton.scaleY = 1.5;
+        this.listButton.addEventListener("click", showList);
         this.src.addChild(this.listButton);
 
         let v2src = queue.getResult('v2');
@@ -141,6 +126,40 @@ class Navbar {
         this.src.addChild(this.v2Button);
     }
 }
+
+class List {
+    constructor() {
+        this.src = new createjs.Container();
+        this.src.scaleX = 1.5;
+        this.src.scaleY = 1.5;
+
+        let listsrc = queue.getResult('list');
+        this.listBackground = new createjs.Bitmap(listsrc);
+        this.listBackground.x = 180;
+        this.listBackground.y = 120;
+        this.src.addChild(this.listBackground);
+
+        let listButtonsSrc = queue.getResult('listButtons');
+        this.resume = new createjs.Bitmap(listButtonsSrc);
+        this.resume.sourceRect = new createjs.Rectangle(0, 96, 152, 48);
+        this.resume.x = 240;
+        this.resume.y = 138;
+        this.src.addChild(this.resume);
+
+        this.resume = new createjs.Bitmap(listButtonsSrc);
+        this.resume.sourceRect = new createjs.Rectangle(0, 0, 152, 48);
+        this.resume.x = 240;
+        this.resume.y = 200;
+        this.src.addChild(this.resume);
+
+        this.resume = new createjs.Bitmap(listButtonsSrc);
+        this.resume.sourceRect = new createjs.Rectangle(0, 48, 152, 48);
+        this.resume.x = 240;
+        this.resume.y = 262;
+        this.src.addChild(this.resume);
+    }
+}
+
 
 class Cell {
     constructor(type, status, center) {
@@ -954,7 +973,9 @@ function initstart() {
     tempQueue.on('complete', start);
     tempQueue.loadManifest([
         {src: 'image/startScene.png', id: 'startScene'},
-        {src: 'image/startButton.png', id: 'startButton'}]);
+        {src: 'image/startButton.png', id: 'startButton'},
+        {src: 'image/startMonster.png', id: 'startMonster'}]
+    );
     console.log("initstart");
 }
 
@@ -973,8 +994,16 @@ function start(){
     container.scaleX = scaleFactor;
     container.scaleY = scaleFactor;
 
-
-    stage.update();
+    let startMonsterSrc = tempQueue.getResult('startMonster');
+    let startMonster = new createjs.Bitmap(startMonsterSrc);
+    startMonster.x = 110;
+    startMonster.y = 80;
+    createjs.Tween.get(startMonster,{loop:true})
+        .to({y:130},1500)
+        .to({y:80},1500);
+    container.addChild(startMonster);
+    createjs.Ticker.setFPS(60);
+    createjs.Ticker.addEventListener('tick', function(){stage.update();});
     init();
 }
 
@@ -993,6 +1022,8 @@ function init() {
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
         {src: 'image/v2.png', id: 'v2'},
+        {src: 'image/list.png', id: 'list'},
+        {src: 'image/listButtons.png', id: 'listButtons'},
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
@@ -1119,6 +1150,12 @@ function addCarrot() {
 function addNavbar() {
     navbar = new Navbar();
     container.addChild(navbar.src);
+}
+
+function addList() {
+    list = new List();
+    container.addChild(list.src);
+    stopOrContinue();
 }
 
 function setControllers() {
@@ -1556,6 +1593,10 @@ function stopOrContinue(event){
         navbar.stopButton.sourceRect = new createjs.Rectangle(1143, 475, 40, 40);
         status = 0;
     }
+}
+
+function showList(event){
+    addList();
 }
 
 // calculations
