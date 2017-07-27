@@ -1168,6 +1168,15 @@ function startGame() {
     status = 1;
 }
 
+function decreaseLife() {
+    life--;
+    // debug
+    alert('life remain: ' + life);
+}
+
+function fail() {
+}
+
 // update functions
 function update() {
     // update
@@ -1189,52 +1198,65 @@ function updateMonsters() {
     * 生成怪物
     */
     // debug
-        for (let i = 0; i < monsters.length;) {
-            if (monsters[i].blood <= 0) {
-                container.removeChild(monsters[i].src);
-                monsters[i].die();
-                coins += monsters[i].value;
-                monsters.splice(i, 1);
-                continue;
-            }
+    for (let i = 0; i < monsters.length;) {
+        if (monsters[i].blood <= 0) {
+            container.removeChild(monsters[i].src);
+            monsters[i].die();
+            coins += monsters[i].value;
+            monsters.splice(i, 1);
+            continue;
+        }
 
-            // monster[i].src: the container containing monster bitmap and blood
-            // update blood
-            monsters[i].updateBlood();
+        // monster[i].src: the container containing monster bitmap and blood
+        // update blood
+        monsters[i].updateBlood();
 
-            // let monster = monsters[i].src.getChildByName('monster');
-            // let center = monsters[i].src.localToLocal(monster.x, monster.y, container);
-            let center = {x: monsters[i].src.x, y: monsters[i].src.y};
-            // cell center
-            let turningPoint = getNextTurningPoint(center.x, center.y);
-            if (!turningPoint) {
-                container.removeChild(monsters[i].src);
-                monsters.splice(i, 1);
-                continue;
-            }
-            let dx = 0, dy = 0;
-            if (almostEqual(turningPoint.x, center.x)) {
-                dx = turningPoint.x - center.x;
-                if (Math.abs(monsters[i].speed) < Math.abs(turningPoint.y - center.y)) dy = turningPoint.y > center.y ? monsters[i].speed : -monsters[i].speed;
-                else dy = turningPoint.y - center.y;
-            }
-            else if (almostEqual(turningPoint.y, center.y)) {
-                dy = turningPoint.y - center.y;
-                if (Math.abs(monsters[i].speed) < Math.abs(turningPoint.x - center.x)) dx = turningPoint.x > center.x ? monsters[i].speed : -monsters[i].speed;
-                else dx = turningPoint.x - center.x;
-            }
-            monsters[i].src.x += dx;
-            monsters[i].src.y += dy;
+        // let monster = monsters[i].src.getChildByName('monster');
+        // let center = monsters[i].src.localToLocal(monster.x, monster.y, container);
+        let center = {x: monsters[i].src.x, y: monsters[i].src.y};
+        // cell center
+        let turningPoint = getNextTurningPoint(center.x, center.y);
+        if (!turningPoint) {
+            container.removeChild(monsters[i].src);
+            monsters.splice(i, 1);
+            continue;
+        }
+        let dx = 0, dy = 0;
+        if (almostEqual(turningPoint.x, center.x)) {
+            dx = turningPoint.x - center.x;
+            if (Math.abs(monsters[i].speed) < Math.abs(turningPoint.y - center.y)) dy = turningPoint.y > center.y ? monsters[i].speed : -monsters[i].speed;
+            else dy = turningPoint.y - center.y;
+        }
+        else if (almostEqual(turningPoint.y, center.y)) {
+            dy = turningPoint.y - center.y;
+            if (Math.abs(monsters[i].speed) < Math.abs(turningPoint.x - center.x)) dx = turningPoint.x > center.x ? monsters[i].speed : -monsters[i].speed;
+            else dx = turningPoint.x - center.x;
+        }
 
-            // slowdown timer
-            if (monsters[i].slowDownTimer === 180) monsters[i].speedUp();
-            monsters[i].slowDownTimer++;
-            i++;
-            // let monsterCell = calCell(pt.x, pt.y);
-            // if (monsterCell.row === land[land.length - 1].row && monsterCell.col === land[land.length - 1].col) {
-            //     container.removeChild(monsters[i].src);
-            //     monsters.splice(i, 1);
-            // }
+        // reached end of the land, eat carrot
+        if (dx === 0 && dy === 0) {
+            decreaseLife();
+            if (life === 0) {
+                fail();
+            }
+            container.removeChild(monsters[i].src);
+            monsters[i].die();
+            monsters.splice(i, 1);
+            continue;
+        }
+
+        monsters[i].src.x += dx;
+        monsters[i].src.y += dy;
+
+        // slowdown timer
+        if (monsters[i].slowDownTimer === 180) monsters[i].speedUp();
+        monsters[i].slowDownTimer++;
+        i++;
+        // let monsterCell = calCell(pt.x, pt.y);
+        // if (monsterCell.row === land[land.length - 1].row && monsterCell.col === land[land.length - 1].col) {
+        //     container.removeChild(monsters[i].src);
+        //     monsters.splice(i, 1);
+        // }
     }
     if (monsterTimer === 60 || monsterTimer % 600 === 0) {
         if (monsterTimer / 300 % 3 === 0) {
