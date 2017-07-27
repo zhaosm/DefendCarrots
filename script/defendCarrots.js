@@ -28,8 +28,12 @@ let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, tow
 let bloodWidth, bloodHeight;
 // navBar
 let navbar, list, deathbar;
-let life = 10, coins = 5000;
+const originCoins = 5000;
+let life = 10, coins = originCoins;
 let speed = 1;
+
+// update
+let tickEvent = null;
 
 // terrain data
 let terrainBound = {
@@ -1079,7 +1083,7 @@ function start(){
     container.addChild(cloud);
 
     createjs.Ticker.setFPS(60);
-    createjs.Ticker.addEventListener('tick', function(){stage.update();});
+    tickEvent = createjs.Ticker.addEventListener('tick', function(){stage.update();});
     init();
 }
 
@@ -1274,7 +1278,8 @@ function setControllers() {
 
 function startGame() {
     createjs.Ticker.setFPS(60);
-    createjs.Ticker.addEventListener('tick', update);
+    if (tickEvent) createjs.Ticker.removeEventListener('tick', tickEvent);
+    tickEvent = createjs.Ticker.addEventListener('tick', update);
     status = 1;
 }
 
@@ -1728,6 +1733,8 @@ function stopOrContinue(event){
 function showList(event){
     stopOrContinue();
     list.src.visible = true;
+    container.removeChild(list.src);
+    container.addChild(list.src);
 }
 
 function backToNormal(event){
@@ -1735,19 +1742,35 @@ function backToNormal(event){
     list.src.visible = false;
 }
 
-/*****still have bugs********/
 function restart(event){
     life = 10;
     coins = 5000;
     container.removeAllChildren();
+    resetParameters();
     handleComplete();
 }
 
-/*****still have bugs********/
+function resetParameters() {
+    monsters = [];
+    towers = [];
+    bullets = [];
+    barriers = [];
+    landPath = [];
+    terrain = [];
+    monsterTimer = 0;
+    towerTimer = 0;
+    speedFactor = 1;
+    life = 10;
+    coins = originCoins;
+    speed = 1;// ?
+}
+
 function backToMain(event){
     life = 10;
     coins = 5000;
     stage.visible = false;
+    container.removeAllChildren();
+    resetParameters();
     initstart();
 }
 
