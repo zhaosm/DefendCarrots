@@ -19,11 +19,12 @@ let carrot;
 let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
-// monsters and towers
+// monsters, barriers and towers
 let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1, speedFactor = 1;// speed: per second
 
 let monsters = [], towers = [], bullets = [];
 let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
+let bloodWidth, bloodHeight;
 // navBar
 let navbar;
 let life = 10, coins = 5000;
@@ -586,8 +587,11 @@ class Monster {
     setBloodParameters(monsterBounds) {
         this.blood = 1;
         this.bloodColor = "#21ff12";
-        this.bloodHeight = monsterBounds.height / 5;
-        this.bloodDist = monsterBounds.height / 5;
+        // this.bloodHeight = monsterBounds.height / 5;
+        // this.bloodDist = monsterBounds.height / 5;
+        this.bloodHeight = bloodHeight;
+        this.bloodDist = this.bloodHeight;
+        this.bloodWidth = bloodWidth;
     }
     setSpriteParameters(monster) {
         let monsterBounds = monster.getBounds();
@@ -602,8 +606,10 @@ class Monster {
     }
     createBlood(monsterBounds) {
         let blood = new createjs.Shape();
-        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monsterBounds.width, this.bloodHeight);
+        blood.graphics.beginFill(this.bloodColor).drawRect(monsterBounds.width / 2 - this.bloodWidth / 2, 0, this.bloodWidth * this.blood, this.bloodHeight);
+        // blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.bloodWidth, this.bloodHeight);
         blood.name = 'blood';
+        return blood;
     }
     setContainer(monster, blood) {
         let center = getTerrainCellCenter(land[0].row, land[0].col);
@@ -639,10 +645,7 @@ class Monster {
     updateBlood() {
         if (this.blood < 0) this.blood = 0;
         this.src.removeChild(this.src.getChildByName('blood'));
-        let blood = new createjs.Shape();
-        let monsterBounds = this.src.getChildByName('monster').getBounds();
-        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, monsterBounds.width * this.blood, this.bloodHeight);
-        blood.name = 'blood';
+        let blood = this.createBlood(this.src.getChildByName('monster').getBounds());
         this.src.addChild(blood);
     }
     die() {
@@ -823,23 +826,39 @@ class Poo extends Bullet {
     }
 }
 
-class Barrier {
-    constructor(center, cells, srcName) {
+class Barrier{
+    constructor(center, cells, srcName, ) {
         let icon = this.createSrc(srcName);
         let iconBounds = icon.getBounds();
         icon.regX = iconBounds.width / 2;
         icon.regY = iconBounds.height / 2;
-        this.bloodHeight = iconBounds.height / 5;
-        this.bloodDist = iconBounds.height / 5;
+        // this.bloodHeight = iconBounds.height / 5;
+        // this.bloodDist = iconBounds.height / 5;
+        this.bloodHeight = bloodHeight;
+        this.bloodDist = this.bloodHeight;
+        this.bloodWidth = bloodWidth;
         icon.x = icon.regX;
         icon.y = this.bloodHeight + this.bloodDist + icon.regY;
         icon.name = 'icon';
+        icon.instance = this;
+        this.shootThis = false;
+        icon.clickToShootThis = true;
+        icon.on('click', function() {
+            if(this.clickToShootThis) {
+                for (let barrier of barriers) {
+                    if (barrier.shootThis) {
+                        barrier.stopShootingThis();
+                    }
+                }
+                this.instance.shootThis = true;
+            }
+            else this.instance.shootThis = false;
+            this.clickToShootThis = !this.clickToShootThis;
+        });
 
         this.blood = 1;
         this.bloodColor = "#21ff12";
-        let blood = new createjs.Shape();
-        blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, iconBounds.width, this.bloodHeight);
-        blood.name = 'blood';
+        let blood = this.createBlood(iconBounds);
 
         this.src = new createjs.Container();
         this.src.regX = icon.regX;
@@ -849,12 +868,61 @@ class Barrier {
         this.src.addChild(icon);
         this.src.addChild(blood);
 
+        let dieData = {
+            "images": [
+                queue.getResult("monsterDieSpriteSheet")
+            ],
+            "frames": [
+                [1, 1, 175, 178],
+                [178, 1, 175, 178],
+                [355, 1, 175, 178],
+                [532, 1, 175, 178]
+            ],
+            "animations": {
+                "monsterDie": {
+                    "frames": [0, 1, 2, 3],
+                    'speed': .3
+                }
+            }
+        };
+        this.dieSpriteSheet = new createjs.SpriteSheet(dieData);
+
         this.cells = cells;
     }
     createSrc(srcName) {
         // return src instance
         return new createjs.Bitmap(queue.getResult(srcName));
     }
+    createBlood(iconBounds) {
+        let blood = new createjs.Shape();
+        blood.graphics.beginFill(this.bloodColor).drawRect(iconBounds.width / 2 - this.bloodWidth / 2, iconBounds.height / 4, this.bloodWidth * this.blood, this.bloodHeight);
+        // blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.bloodWidth, this.bloodHeight);
+        blood.name = 'blood';
+        return blood;
+    }
+    updateBlood() {
+        if (this.blood < 0) this.blood = 0;
+        this.src.removeChild(this.src.getChildByName('blood'));
+        let blood = this.createBlood(this.src.getChildByName('icon').getBounds());
+        this.src.addChild(blood);
+    }
+    die() {
+        let animation = new createjs.Sprite(this.dieSpriteSheet, 'monsterDie');
+        let spriteBounds = animation.getBounds();
+        animation.regX = spriteBounds.width / 2;
+        animation.regY = spriteBounds.height / 2;
+        animation.x = this.src.x;
+        animation.y = this.src.y;
+        animation.on('animationend', function() {
+            container.removeChild(this);
+        });
+        container.addChild(animation);
+    }
+    stopShootingThis() {
+        this.shootThis = false;
+        this.src.clickToShootThis = true;
+    }
+
 }
 
 // control
@@ -950,6 +1018,8 @@ function showStage() {
 function setParametersRelatedToBackgroundSize() {
     cellWidth = (terrainBound.rightTop.x - terrainBound.leftTop.x) / col * backgroundWidth;
     cellHeight = (terrainBound.leftBottom.y - terrainBound.leftTop.y) / row * backgroundHeight;
+    bloodWidth = cellWidth;
+    bloodHeight = cellHeight / 6;
     generateTerrain();
     calLandPath();
     bottleBulletSpeed = backgroundWidth;
@@ -1006,6 +1076,7 @@ function update() {
     if(status === 1)
     {
         updateMonsters();
+        updateBarriers();
         updateTowers();
         updateBullets();
         updateNavbar();
@@ -1078,26 +1149,54 @@ function updateMonsters() {
     monsterTimer++;
 }
 
+function updateBarriers() {
+    for (let i = 0;i < barriers.length;) {
+        if (barriers[i].blood <= 0) {
+            container.removeChild(barriers[i].src);
+            barriers[i].die();
+            barriers.splice(i, 1);
+            continue;
+        }
+        barriers[i].updateBlood();
+        i++;
+    }
+}
+
 function updateTowers() {
     /*
     * 找怪物，产生子弹*/
     towerTimer++;
-    for (let tower of towers) {
-        let center = {x: carrot.src.x, y: carrot.src.y};
-        if ((towerTimer % 15 === 0 && tower.constructor.name === 'Bottle') || (towerTimer % 20 === 0 &&  tower.constructor.name === 'Shit')) {
-            tower.attack(tower.findTarget(monsters, center));
+    let shootBarrier = false, targetBarrier = null;
+    for(let barrier of barriers) {
+        if (barrier.shootThis) {
+            shootBarrier = true;
+            targetBarrier = barrier;
+            break;
         }
-        else if (tower.constructor.name === 'Sun') {
-            if (tower.timer % 60 === 0) {
-                let targets = tower.findTargets(monsters);
-                if (targets.length) {
-                    for (let monsterContainer of monsters) {
-                        tower.attack();
-                        monsterContainer.blood -= tower.power;
+    }
+    if (!shootBarrier) {
+        for (let tower of towers) {
+            let center = {x: carrot.src.x, y: carrot.src.y};
+            if ((towerTimer % 15 === 0 && tower.constructor.name === 'Bottle') || (towerTimer % 20 === 0 && tower.constructor.name === 'Shit')) {
+                tower.attack(tower.findTarget(monsters, center));
+            }
+            else if (tower.constructor.name === 'Sun') {
+                if (tower.timer % 60 === 0) {
+                    let targets = tower.findTargets(monsters);
+                    if (targets.length) {
+                        for (let monsterContainer of monsters) {
+                            tower.attack(monsterContainer);
+                            monsterContainer.blood -= tower.power;
+                        }
                     }
                 }
+                tower.timer++;
             }
-            tower.timer++;
+        }
+    }
+    else {
+        for (let tower of towers) {
+            if (towerTimer % 10 === 0 && eucDistance(tower.src.x, tower.src.y, targetBarrier.src.x, targetBarrier.src.y) <= tower.radius) tower.attack(targetBarrier);
         }
     }
 }
@@ -1107,42 +1206,63 @@ function updateBullets() {
     * 遍历子弹数组，更新每个子弹，检查每个子弹是否打到了怪物/障碍物，更新怪物/障碍物血量，如果血量<0删除
     * */
     // if reached destination, remove this bullet
-    for (let i = 0;i < bullets.length;) {
-        // if (almostEqual(eucDistance(bullets[i].src.x, bullets[i].src.y, bullets[i].targetCenter.x, bullets[i].targetCenter.y), 0)) {
-        //     container.removeChild(bullets[i].src);
-        //     bullets.splice(i, 1);
-        // }
-
-        // out of stage
-        let bulletBounds = bullets[i].src.getBounds();
-        if (bullets[i].src.x < -bulletBounds.width / 2 || bullets[i].src.x > backgroundWidth + bulletBounds.width / 2 || bullets[i].src.y < -bulletBounds.height / 2 || bullets[i].y > backgroundHeight + bulletBounds.height / 2) {
-            container.removeChild(bullets[i].src);
-            bullets.splice(i, 1);
-            continue;
+    let shootBarrier = false, targetBarrier = null;
+    for(let barrier of barriers) {
+        if (barrier.shootThis) {
+            shootBarrier = true;
+            targetBarrier = barrier;
+            break;
         }
-        // find closest monster
-        let closest = null, closestDist = 10000000;
-        for (let monsterContainer of monsters) {
-            // let monster = monsterContainer.src.getChildByName('monster');
-            // let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
-            let dist = eucDistance(bullets[i].src.x, bullets[i].src.y, monsterContainer.src.x, monsterContainer.src.y);
-            if (dist < closestDist) {
-                closestDist = dist;
-                closest = monsterContainer;
+    }
+    if (!shootBarrier) {
+        for (let i = 0; i < bullets.length;) {
+            // if (almostEqual(eucDistance(bullets[i].src.x, bullets[i].src.y, bullets[i].targetCenter.x, bullets[i].targetCenter.y), 0)) {
+            //     container.removeChild(bullets[i].src);
+            //     bullets.splice(i, 1);
+            // }
+
+            // out of stage
+            let bulletBounds = bullets[i].src.getBounds();
+            if (bullets[i].src.x < -bulletBounds.width / 2 || bullets[i].src.x > backgroundWidth + bulletBounds.width / 2 || bullets[i].src.y < -bulletBounds.height / 2 || bullets[i].y > backgroundHeight + bulletBounds.height / 2) {
+                container.removeChild(bullets[i].src);
+                bullets.splice(i, 1);
+                continue;
             }
-        }
+            // find closest monster
+            let closest = null, closestDist = 10000000;
+            for (let monsterContainer of monsters) {
+                // let monster = monsterContainer.src.getChildByName('monster');
+                // let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
+                let dist = eucDistance(bullets[i].src.x, bullets[i].src.y, monsterContainer.src.x, monsterContainer.src.y);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closest = monsterContainer;
+                }
+            }
 
-        // if hit the closest, remove this bullet
-        if (closest && closestDist < cellWidth / 10) {
-            let monster = closest.src.getChildByName('monster');
-            // let monsterpt = closest.src.localToLocal(monster.x, monster.y, container);
-            bullets[i].attack(closest);
-            // closest.blood -= bullets[i].power;
-            container.removeChild(bullets[i].src);
-            bullets.splice(i, 1);
-            continue;
+            // if hit the closest, remove this bullet
+            if (closest && almostEqual(closestDist, 0)) {
+                let monster = closest.src.getChildByName('monster');
+                // let monsterpt = closest.src.localToLocal(monster.x, monster.y, container);
+                bullets[i].attack(closest);
+                // closest.blood -= bullets[i].power;
+                container.removeChild(bullets[i].src);
+                bullets.splice(i, 1);
+                continue;
+            }
+            i++;
         }
-        i++;
+    }
+    else {
+        for (let i = 0;i < bullets.length;) {
+            if (bullets[i].constructor.name === 'BottleBullet' && almostEqual(eucDistance(bullets[i].src.x, bullets[i].src.y, targetBarrier.src.x, targetBarrier.src.y), 0)) {
+                bullets[i].attack(targetBarrier);
+                container.removeChild(bullets[i].src);
+                bullets.splice(i, 1);
+                continue;
+            }
+            i++;
+        }
     }
 }
 
@@ -1216,17 +1336,6 @@ function generateBarriers() {
     container.addChild(barrier.src);
     barriers.push(barrier);
 
-    center = {x: (getTerrainCellCenter(4, 3).x + getTerrainCellCenter(4, 2).x) / 2, y: (getTerrainCellCenter(3, 3).y + getTerrainCellCenter(4, 3).y) / 2};
-    cells = [
-        {row: 3, col: 2},
-        {row: 3, col: 3},
-        {row: 4, col: 2},
-        {row: 4, col: 3},
-    ];
-    barrier = new Barrier(center, cells, 'largeTreasureBox');
-    container.addChild(barrier.src);
-    barriers.push(barrier);
-
     center = {x: (getTerrainCellCenter(2, 2).x + getTerrainCellCenter(2, 3).x) / 2, y: getTerrainCellCenter(2, 2).y};
     cells = [
         {row: 2, col: 2},
@@ -1235,6 +1344,17 @@ function generateBarriers() {
         {row: 3, col: 3}
     ];
     barrier = new Barrier(center, cells, 'largeTree');
+    container.addChild(barrier.src);
+    barriers.push(barrier);
+
+    center = {x: (getTerrainCellCenter(4, 3).x + getTerrainCellCenter(4, 2).x) / 2, y: (getTerrainCellCenter(3, 3).y + getTerrainCellCenter(4, 3).y) / 2};
+    cells = [
+        {row: 3, col: 2},
+        {row: 3, col: 3},
+        {row: 4, col: 2},
+        {row: 4, col: 3},
+    ];
+    barrier = new Barrier(center, cells, 'largeTreasureBox');
     container.addChild(barrier.src);
     barriers.push(barrier);
 
