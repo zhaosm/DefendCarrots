@@ -24,7 +24,7 @@ let cellWidth, cellHeight, row = 7, col = 12;
 let monsterTimer = 0, towerTimer = 0, monsterSpeed = 1, speedFactor = 1;// speed: per second
 
 let monsters = [], towers = [], bullets = [];
-let towerSpeed = 2, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
+let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 // navBar
 let navbar;
 let life = 10, coins = 5000;
@@ -303,17 +303,16 @@ class Tower {
         // this.src.rotation = attackParameters.degree;
         let bullet = null;
         if (this.constructor.name === 'Bottle') {
-            bullet = new Bullet('bottleBullet_level' + this.level);
+            bullet = new BottleBullet(this.level);
         }
         else if (this.constructor.name === 'Shit') {
-            bullet = new Bullet('poo_level' + this.level);
+            bullet = new Poo(this.level);
         }
 
         let tmpDist = eucDistance(attackParameters.center.x, attackParameters.center.y, attackParameters.targetCenter.x, attackParameters.targetCenter.y);
-        let dist = 0;
-        dist = this.src.getBounds().height / 2 + bullet.src.getBounds().height / 2;
+        let dist = this.src.getBounds().height / 2 + bullet.src.getBounds().height / 2;
         let center = {x: attackParameters.center.x + (attackParameters.targetCenter.x - attackParameters.center.x) * dist / tmpDist, y: attackParameters.center.y + (attackParameters.targetCenter.y - attackParameters.center.y) * dist / tmpDist};
-        bullet.attack(center, attackParameters.degree, attackParameters.targetCenter);
+        bullet.shoot(center, attackParameters.degree, attackParameters.targetCenter);
         bullets.push(bullet);
         container.addChildAt(bullet.src, container.getChildIndex(this.src));
 
@@ -541,7 +540,43 @@ class Monster {
         let blood = this.createBlood(monsterBounds);
         this.setContainer(monster, blood);
         this.setDieSprite();
-        this.speed = monsterSpeed;
+        this.originspeed = monsterSpeed;
+        this.speed = this.originspeed;
+        this.slowDownTimer = 0;
+        this.isSlowDown = false;
+        this.createSlowDownSpriteSheet();
+    }
+    createSlowDownSpriteSheet() {
+        let data = {
+            "images": [
+                queue.getResult('slowDownSpriteSheet')
+            ],
+
+            "frames": [
+                [1, 1, 74, 20, 0, 0, 0],
+                [77, 1, 74, 20, 0, 0, 0]
+            ],
+
+            "animations": {
+                "shit": {
+                    "frames": [0, 1],
+                    'speed': .1
+                }
+            }
+        };
+        this.slowDownSpriteSheet = new createjs.SpriteSheet(data);
+    }
+    addSlowDownSprite() {
+        // return slowdown animation instance
+        let animation = new createjs.Sprite(this.slowDownSpriteSheet, 'shit');
+        let animationBounds = animation.getBounds();
+        animation.regX = animationBounds.width / 2;
+        animation.regY = animationBounds.height / 2;
+        let monster = this.src.getChildByName('monster');
+        animation.x = monster.x;
+        animation.y = monster.y + monster.getBounds().height / 2 - animationBounds.height / 2;
+        animation.name = 'slowDown';
+        this.src.addChild(animation);
     }
     createSprite() {
         // return the sprite instance
@@ -620,12 +655,27 @@ class Monster {
         });
         container.addChild(animation);
     }
+    slowDown(power) {
+        if (this.isSlowDown) return;
+        this.speed = Math.max(this.speed * (1 - power), 0);
+        this.isSlowDown = true;
+        this.slowDownTimer = 0;
+
+        this.addSlowDownSprite();
+    }
+    speedUp() {
+        if (!this.isSlowDown) return;
+        this.speed = this.originspeed;
+        this.isSlowDown = false;
+        this.src.removeChild(this.src.getChildByName('slowDown'));
+    }
 }
 
 class NormalMonster extends Monster {
     constructor(...args) {
         super(...args);
-        this.speed = monsterSpeed;
+        this.originspeed = monsterSpeed;
+        this.speed = this.originspeed;
     }
     createSprite() {
         let monsterData = {
@@ -649,12 +699,14 @@ class NormalMonster extends Monster {
         this.originSpriteSheet = new createjs.SpriteSheet(monsterData);
         return new createjs.Sprite(this.originSpriteSheet, 'monsterNormal');
     }
+
 }
 
 class FastMonster extends Monster {
     constructor(...args) {
         super(...args);
-        this.speed = monsterSpeed * 2;
+        this.originspeed = monsterSpeed * 2;
+        this.speed = this.originspeed;
     }
     createSprite() {
         let monsterData = {
@@ -693,7 +745,8 @@ class FastMonster extends Monster {
 class SlowMonster extends Monster {
     constructor(...args) {
         super(...args);
-        this.speed = monsterSpeed / 2;
+        this.originspeed = monsterSpeed / 2;
+        this.speed = this.originspeed;
     }
     createSprite() {
         let monsterData = {
@@ -719,34 +772,11 @@ class SlowMonster extends Monster {
 }
 
 class Bullet {
-    constructor(type) {
-        this.type = type;
-        let iconName;
-        if (type === 'bottleBullet_level1') {
-            iconName = 'bottleBullet_level1';
-        }
-        else if (type === 'bottleBullet_level2') {
-            iconName = 'bottleBullet_level2';
-        }
-        else if (type === 'bottleBullet_level3') {
-            iconName = 'bottleBullet_level3';
-        }
-        else if (type === 'poo_level1') {
-            iconName = 'poo_level1';
-        }
-        else if (type === 'poo_level2') {
-            iconName = 'poo_level2';
-        }
-        else if (type === 'poo_level3') {
-            iconName = 'poo_level3';
-        }
-        this.speed = backgroundWidth;// per second
-        this.power = 0.25;
-
-        let src = queue.getResult(iconName);
-        this.src = new createjs.Bitmap(src);
+    constructor() {
+        this.src = null;
+        this.speed = bottleBulletSpeed;
     }
-    attack(center, rotation, targetCenter) {
+    shoot(center, rotation, targetCenter) {
         let srcBounds = this.src.getBounds();
         this.src.regX = srcBounds.width / 2;
         this.src.regY = srcBounds.height / 2;
@@ -760,6 +790,34 @@ class Bullet {
         let destCenter = {x: center.x + (targetCenter.x - center.x) * dist / tmpDist, y: center.y + (targetCenter.y - center.y) * dist / tmpDist};
         createjs.Tween.get(this.src, {loop: false})
             .to({x: destCenter.x, y: destCenter.y}, time);
+    }
+    attack(monsterContainer) {
+    }
+}
+
+class BottleBullet extends Bullet {
+    constructor(level, ...args) {
+        super(...args);
+        let src = queue.getResult('bottleBullet_level' + level);
+        this.src = new createjs.Bitmap(src);
+        this.speed = bottleBulletSpeed * level;
+        this.power = 0.1 * level;
+    }
+    attack(monsterContainer) {
+        monsterContainer.blood -= this.power;
+    }
+}
+
+class Poo extends Bullet {
+    constructor(level, ...args) {
+        super(...args);
+        let src = queue.getResult('poo_level' + level);
+        this.src = new createjs.Bitmap(src);
+        this.speed = pooSpeed * level;
+        this.power = 0.3 * level;
+    }
+    attack(monsterContainer) {
+        monsterContainer.slowDown(this.power);
     }
 }
 
@@ -806,7 +864,8 @@ function init() {
         {src: 'image/monsterDieSpriteSheet.png', id: 'monsterDieSpriteSheet'},
         {src: 'image/monsterNormalSpriteSheet.png', id: 'monsterNormalSpriteSheet'},
         {src: 'image/monsterFastSpriteSheet.png', id: 'monsterFastSpriteSheet'},
-        {src: 'image/monsterSlowSpriteSheet.png', id: 'monsterSlowSpriteSheet'}
+        {src: 'image/monsterSlowSpriteSheet.png', id: 'monsterSlowSpriteSheet'},
+        {src: 'image/slowDownSpriteSheet.png', id: 'slowDownSpriteSheet'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', handleComplete);
@@ -826,10 +885,8 @@ function showStage() {
     background = new createjs.Bitmap(backgroundsrc);
     backgroundWidth = backgroundsrc.width;
     backgroundHeight = backgroundsrc.height;
-    cellWidth = (terrainBound.rightTop.x - terrainBound.leftTop.x) / col * backgroundWidth;
-    cellHeight = (terrainBound.leftBottom.y - terrainBound.leftTop.y) / row * backgroundHeight;
-    generateTerrain();
-    calLandPath();
+    setParametersRelatedToBackgroundSize()
+
     scaleFactor = Math.min(stage.canvas.width / backgroundsrc.width, stage.canvas.height / backgroundsrc.height);
 
     container = new createjs.Container();
@@ -837,6 +894,15 @@ function showStage() {
     container.scaleX = scaleFactor;
     container.scaleY = scaleFactor;
     stage.addChild(container);
+}
+
+function setParametersRelatedToBackgroundSize() {
+    cellWidth = (terrainBound.rightTop.x - terrainBound.leftTop.x) / col * backgroundWidth;
+    cellHeight = (terrainBound.leftBottom.y - terrainBound.leftTop.y) / row * backgroundHeight;
+    generateTerrain();
+    calLandPath();
+    bottleBulletSpeed = backgroundWidth;
+    pooSpeed = backgroundWidth;
 }
 
 function addCarrot() {
@@ -938,6 +1004,10 @@ function updateMonsters() {
             }
             monsters[i].src.x += dx;
             monsters[i].src.y += dy;
+
+            // slowdown timer
+            if (monsters[i].slowDownTimer === 180) monsters[i].speedUp();
+            monsters[i].slowDownTimer++;
             i++;
             // let monsterCell = calCell(pt.x, pt.y);
             // if (monsterCell.row === land[land.length - 1].row && monsterCell.col === land[land.length - 1].col) {
@@ -945,7 +1015,7 @@ function updateMonsters() {
             //     monsters.splice(i, 1);
             // }
     }
-    if (monsterTimer === 60 || monsterTimer % 300 === 0) {
+    if (monsterTimer === 60 || monsterTimer % 600 === 0) {
         if (monsterTimer / 300 % 3 === 0) {
             generateMonster('slow');
         }
@@ -1015,7 +1085,8 @@ function updateBullets() {
         if (closest && closestDist < cellWidth / 10) {
             let monster = closest.src.getChildByName('monster');
             // let monsterpt = closest.src.localToLocal(monster.x, monster.y, container);
-            closest.blood -= bullets[i].power;
+            bullets[i].attack(closest);
+            // closest.blood -= bullets[i].power;
             container.removeChild(bullets[i].src);
             bullets.splice(i, 1);
             continue;
