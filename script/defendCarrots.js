@@ -29,6 +29,7 @@ let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, tow
 // navBar
 let navbar;
 let life = 10, coins = 5000;
+let speed = 1;
 
 // terrain data
 let terrainBound = {
@@ -125,6 +126,16 @@ class Navbar {
         this.listButton.scaleY = 1.5;
         this.src.addChild(this.listButton);
 
+        let v2src = queue.getResult('v2');
+        this.v2Button = new createjs.Bitmap(v2src);
+        this.v2Button.x = 640;
+        this.v2Button.y = 10;
+        //1363*512
+        this.v2Button.sourceRect = new createjs.Rectangle(0, 0, 71, 36);
+        this.v2Button.scaleX = 1.5;
+        this.v2Button.scaleY = 1.5;
+        this.v2Button.addEventListener("click", changeSpeed);
+        this.src.addChild(this.v2Button);
     }
 }
 
@@ -823,6 +834,7 @@ class Poo extends Bullet {
     }
 }
 
+// control
 function initstart() {
     stage = new createjs.Stage("myCanvas");
     tempQueue = new createjs.LoadQueue();
@@ -832,7 +844,6 @@ function initstart() {
         {src: 'image/startButton.png', id: 'startButton'}]);
     console.log("initstart");
 }
-
 
 function start(){
     startSceneSrc = tempQueue.getResult('startScene');
@@ -853,11 +864,22 @@ function start(){
     stage.update();
     init();
 }
-// control
+
+function prepareToStart() {
+    startButtonSrc = tempQueue.getResult('startButton');
+    let startButton = new createjs.Bitmap(startButtonSrc);
+    startButton.x = 320;
+    startButton.y = 500;
+    startButton.addEventListener('click', handleComplete);
+    container.addChild(startButton);
+    stage.update();
+}
+
 function init() {
     let manifest = [
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
+        {src: 'image/v2.png', id: 'v2'},
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
@@ -901,16 +923,6 @@ function init() {
     queue = new createjs.LoadQueue();
     queue.on('complete', prepareToStart);
     queue.loadManifest(manifest);
-}
-
-function prepareToStart() {
-    startButtonSrc = tempQueue.getResult('startButton');
-    let startButton = new createjs.Bitmap(startButtonSrc);
-    startButton.x = 320;
-    startButton.y = 500;
-    startButton.addEventListener('click', handleComplete);
-    container.addChild(startButton);
-    stage.update();
 }
 
 function handleComplete() {
@@ -1238,7 +1250,23 @@ function instanceUpLevel() {
     this.instance.hideInformation();
 }
 
+function changeSpeed(event){
+    if(speed === 1)
+    {
+        speed = 2;
+        navbar.v2Button.sourceRect = new createjs.Rectangle(0, 36, 71, 36);
+        createjs.Ticker.setFPS(120);
+    }
+    else
+    {
+        speed = 1;
+        navbar.v2Button.sourceRect = new createjs.Rectangle(0, 0, 71, 36);
+        createjs.Ticker.setFPS(60);
+    }
+}
+
 function stopOrContinue(event){
+    //debug
     console.log("status=",status);
     if(status === 0)//if not running
     {
