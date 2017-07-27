@@ -59,7 +59,7 @@ let barrier = [
 let terrain = [];
 let carrotData;
 
-let startSceneSrc;
+let startSceneSrc, startButtonSrc;
 
 const monsterData = {
     images:['image/monsters.png'],
@@ -827,16 +827,20 @@ function initstart() {
     stage = new createjs.Stage("myCanvas");
     tempQueue = new createjs.LoadQueue();
     tempQueue.on('complete', start);
-    tempQueue.loadManifest([{src: 'image/startScene.png', id: 'startScene'},]);
+    tempQueue.loadManifest([
+        {src: 'image/startScene.png', id: 'startScene'},
+        {src: 'image/startButton.png', id: 'startButton'}]);
     console.log("initstart");
 }
 
 
 function start(){
     startSceneSrc = tempQueue.getResult('startScene');
-    let bg = new createjs.Bitmap(startSceneSrc);
+
     container = new createjs.Container();
     stage.addChild(container);
+
+    let bg = new createjs.Bitmap(startSceneSrc);
     backgroundWidth = startSceneSrc.width;
     backgroundHeight = startSceneSrc.height;
     //setParametersRelatedToBackgroundSize();
@@ -844,6 +848,8 @@ function start(){
     container.addChild(bg);
     container.scaleX = scaleFactor;
     container.scaleY = scaleFactor;
+
+
     stage.update();
     init();
 }
@@ -893,8 +899,18 @@ function init() {
         {src: 'image/slowDownSpriteSheet.png', id: 'slowDownSpriteSheet'}
     ];
     queue = new createjs.LoadQueue();
-    queue.on('complete', handleComplete);
+    queue.on('complete', prepareToStart);
     queue.loadManifest(manifest);
+}
+
+function prepareToStart() {
+    startButtonSrc = tempQueue.getResult('startButton');
+    let startButton = new createjs.Bitmap(startButtonSrc);
+    startButton.x = 320;
+    startButton.y = 500;
+    startButton.addEventListener('click', handleComplete);
+    container.addChild(startButton);
+    stage.update();
 }
 
 function handleComplete() {
