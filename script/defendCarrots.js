@@ -14,6 +14,7 @@ $canvas.attr('height', stageHeight + "");
 let status;//1=running 0=stop
 // background and containers
 let stage, queue, background, container;
+let tempQueue;
 let carrot;
 // background size and scaleFactor
 let backgroundWidth, backgroundHeight, scaleFactor = 0;
@@ -28,6 +29,7 @@ let bloodWidth, bloodHeight;
 // navBar
 let navbar;
 let life = 10, coins = 5000;
+let speed = 1;
 
 // terrain data
 let terrainBound = {
@@ -60,6 +62,8 @@ let barrierCells = [
 let barriers = [];
 let terrain = [];
 let carrotData;
+
+let startSceneSrc, startButtonSrc;
 
 const monsterData = {
     images:['image/monsters.png'],
@@ -125,6 +129,16 @@ class Navbar {
         this.listButton.scaleY = 1.5;
         this.src.addChild(this.listButton);
 
+        let v2src = queue.getResult('v2');
+        this.v2Button = new createjs.Bitmap(v2src);
+        this.v2Button.x = 640;
+        this.v2Button.y = 10;
+        //1363*512
+        this.v2Button.sourceRect = new createjs.Rectangle(0, 0, 71, 36);
+        this.v2Button.scaleX = 1.5;
+        this.v2Button.scaleY = 1.5;
+        this.v2Button.addEventListener("click", changeSpeed);
+        this.src.addChild(this.v2Button);
     }
 }
 
@@ -665,7 +679,6 @@ class Monster {
         this.speed = Math.max(this.speed * (1 - power), 0);
         this.isSlowDown = true;
         this.slowDownTimer = 0;
-
         this.addSlowDownSprite();
     }
     speedUp() {
@@ -926,11 +939,51 @@ class Barrier{
 }
 
 // control
-function init() {
+function initstart() {
     stage = new createjs.Stage("myCanvas");
+    tempQueue = new createjs.LoadQueue();
+    tempQueue.on('complete', start);
+    tempQueue.loadManifest([
+        {src: 'image/startScene.png', id: 'startScene'},
+        {src: 'image/startButton.png', id: 'startButton'}]);
+    console.log("initstart");
+}
+
+function start(){
+    startSceneSrc = tempQueue.getResult('startScene');
+
+    container = new createjs.Container();
+    stage.addChild(container);
+
+    let bg = new createjs.Bitmap(startSceneSrc);
+    backgroundWidth = startSceneSrc.width;
+    backgroundHeight = startSceneSrc.height;
+    //setParametersRelatedToBackgroundSize();
+    scaleFactor = Math.min(stage.canvas.width / startSceneSrc.width, stage.canvas.height / startSceneSrc.height);
+    container.addChild(bg);
+    container.scaleX = scaleFactor;
+    container.scaleY = scaleFactor;
+
+
+    stage.update();
+    init();
+}
+
+function prepareToStart() {
+    startButtonSrc = tempQueue.getResult('startButton');
+    let startButton = new createjs.Bitmap(startButtonSrc);
+    startButton.x = 320;
+    startButton.y = 500;
+    startButton.addEventListener('click', handleComplete);
+    container.addChild(startButton);
+    stage.update();
+}
+
+function init() {
     let manifest = [
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
+        {src: 'image/v2.png', id: 'v2'},
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
@@ -985,7 +1038,7 @@ function init() {
         {src: 'image/windMill.png', id: 'windMill'}
     ];
     queue = new createjs.LoadQueue();
-    queue.on('complete', handleComplete);
+    queue.on('complete', prepareToStart);
     queue.loadManifest(manifest);
 }
 
@@ -1006,11 +1059,10 @@ function showStage() {
 
     scaleFactor = Math.min(stage.canvas.width / backgroundsrc.width, stage.canvas.height / backgroundsrc.height);
 
-    container = new createjs.Container();
     container.addChild(background);
     container.scaleX = scaleFactor;
     container.scaleY = scaleFactor;
-    stage.addChild(container);
+    // stage.addChild(container);
 
     generateBarriers();
 }
@@ -1459,7 +1511,23 @@ function instanceUpLevel() {
     this.instance.hideInformation();
 }
 
+function changeSpeed(event){
+    if(speed === 1)
+    {
+        speed = 2;
+        navbar.v2Button.sourceRect = new createjs.Rectangle(0, 36, 71, 36);
+        createjs.Ticker.setFPS(120);
+    }
+    else
+    {
+        speed = 1;
+        navbar.v2Button.sourceRect = new createjs.Rectangle(0, 0, 71, 36);
+        createjs.Ticker.setFPS(60);
+    }
+}
+
 function stopOrContinue(event){
+    //debug
     console.log("status=",status);
     if(status === 0)//if not running
     {
@@ -1478,7 +1546,6 @@ function stopOrContinue(event){
         status = 0;
     }
 }
-
 
 // calculations
 function getTerrainCellCenter(r, c) {
