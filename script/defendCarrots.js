@@ -27,7 +27,7 @@ let monsters = [], towers = [], bullets = [];
 let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 let bloodWidth, bloodHeight;
 // navBar
-let navbar, list;
+let navbar, list, deathbar;
 let life = 10, coins = 5000;
 let speed = 1;
 
@@ -127,23 +127,23 @@ class Navbar {
         this.coinText.y = 14;
         this.src.addChild(this.coinText);
 
-        this.stopButton = new createjs.Bitmap(itemssrc);
+        let buttonsSrc = queue.getResult('buttons');
+        this.stopButton = new createjs.Bitmap(buttonsSrc);
         this.stopButton.x = 760;
-        this.stopButton.y = 3;
+        this.stopButton.y = 10;
         //1363*512
-        this.stopButton.sourceRect = new createjs.Rectangle(1323, 310, 40, 40);
+        this.stopButton.sourceRect = new createjs.Rectangle(0, 0, 34,34);
         this.stopButton.scaleX = 1.5;
         this.stopButton.scaleY = 1.5;
         this.stopButton.addEventListener("click", stopOrContinue);
         this.src.addChild(this.stopButton);
 
 
-        this.listButton = new createjs.Bitmap(itemssrc);
-        this.listButton.x = 840;
-        this.listButton.y = 64;
-        this.listButton.rotation = 270;
+        this.listButton = new createjs.Bitmap(buttonsSrc);
+        this.listButton.x = 835;
+        this.listButton.y = 10;
         //1363*512
-        this.listButton.sourceRect = new createjs.Rectangle(1143, 475, 40, 40);
+        this.listButton.sourceRect = new createjs.Rectangle(0, 68, 34, 34);
         this.listButton.scaleX = 1.5;
         this.listButton.scaleY = 1.5;
         this.listButton.addEventListener("click", showList);
@@ -162,9 +162,34 @@ class Navbar {
     }
 }
 
+class Deathbar{
+    constructor(){
+        let deathBarSrc = queue.getResult('gameover');
+        this.src = new createjs.Container();
+        this.src.scaleX = 1.5;
+        this.src.scaleY = 1.5;
+
+        this.bar = new createjs.Bitmap(deathBarSrc);
+        this.bar.x = 110;
+        this.bar.y = 50;
+        this.src.addChild(this.bar);
+
+        let listButtonsSrc = queue.getResult('listButtons');
+        this.restartButton = new createjs.Bitmap(listButtonsSrc);
+        this.restartButton.sourceRect = new createjs.Rectangle(0, 0, 152, 48);
+        this.restartButton.x = 240;
+        this.restartButton.y = 230;
+        this.restartButton.addEventListener('click', restart);
+        this.src.addChild(this.restartButton);
+
+        this.src.visible = false;
+    }
+}
+
 class List {
     constructor() {
         this.src = new createjs.Container();
+        //this.src.addEventListener("click", function (){});
         this.src.scaleX = 1.5;
         this.src.scaleY = 1.5;
 
@@ -172,29 +197,32 @@ class List {
         this.listBackground = new createjs.Bitmap(listsrc);
         this.listBackground.x = 180;
         this.listBackground.y = 120;
+        //this.listBackground.addEventListener('click', function (){});
         this.src.addChild(this.listBackground);
 
         let listButtonsSrc = queue.getResult('listButtons');
-        this.resume = new createjs.Bitmap(listButtonsSrc);
-        this.resume.sourceRect = new createjs.Rectangle(0, 96, 152, 48);
-        this.resume.x = 240;
-        this.resume.y = 138;
-        this.src.addChild(this.resume);
+        this.resumeButton = new createjs.Bitmap(listButtonsSrc);
+        this.resumeButton.sourceRect = new createjs.Rectangle(0, 96, 152, 48);
+        this.resumeButton.x = 240;
+        this.resumeButton.y = 138;
+        this.resumeButton.addEventListener('click', backToNormal);
+        this.src.addChild(this.resumeButton);
 
-        this.resume = new createjs.Bitmap(listButtonsSrc);
-        this.resume.sourceRect = new createjs.Rectangle(0, 0, 152, 48);
-        this.resume.x = 240;
-        this.resume.y = 200;
-        this.src.addChild(this.resume);
+        this.restartButton = new createjs.Bitmap(listButtonsSrc);
+        this.restartButton.sourceRect = new createjs.Rectangle(0, 0, 152, 48);
+        this.restartButton.x = 240;
+        this.restartButton.y = 200;
+        this.restartButton.addEventListener('click', restart);
+        this.src.addChild(this.restartButton);
 
-        this.resume = new createjs.Bitmap(listButtonsSrc);
-        this.resume.sourceRect = new createjs.Rectangle(0, 48, 152, 48);
-        this.resume.x = 240;
-        this.resume.y = 262;
-        this.src.addChild(this.resume);
+        this.backButton = new createjs.Bitmap(listButtonsSrc);
+        this.backButton.sourceRect = new createjs.Rectangle(0, 48, 152, 48);
+        this.backButton.x = 240;
+        this.backButton.y = 262;
+        this.backButton.addEventListener('click', backToMain);
+        this.src.addChild(this.backButton);
     }
 }
-
 
 class Cell {
     constructor(type, status, center) {
@@ -1009,7 +1037,8 @@ function initstart() {
     tempQueue.loadManifest([
         {src: 'image/startScene.png', id: 'startScene'},
         {src: 'image/startButton.png', id: 'startButton'},
-        {src: 'image/startMonster.png', id: 'startMonster'}]
+        {src: 'image/startMonster.png', id: 'startMonster'},
+        {src: 'image/cloud.png', id: 'cloud'}]
     );
     console.log("initstart");
 }
@@ -1037,6 +1066,18 @@ function start(){
         .to({y:130},1500)
         .to({y:80},1500);
     container.addChild(startMonster);
+
+    let cloudSrc = tempQueue.getResult('cloud');
+    let cloud = new createjs.Bitmap(cloudSrc);
+    cloud.x = 700;
+    cloud.y = 40;
+    createjs.Tween.get(cloud,{loop:true})
+        .to({x:400},10000)
+        .wait(2000)
+        .to({x:700},10000)
+        .wait(2000);
+    container.addChild(cloud);
+
     createjs.Ticker.setFPS(60);
     createjs.Ticker.addEventListener('tick', function(){stage.update();});
     init();
@@ -1056,9 +1097,11 @@ function init() {
     let manifest = [
         {src: 'image/background.png', id: 'background'},
         {src: 'image/items.png', id: 'items'},
+        {src: 'image/buttons.png', id: 'buttons'},
         {src: 'image/v2.png', id: 'v2'},
         {src: 'image/list.png', id: 'list'},
         {src: 'image/listButtons.png', id: 'listButtons'},
+        {src: 'image/gameover.png', id: 'gameover'},
         {src: 'image/bottle_level1.png', id: 'bottle_level1'},
         {src: 'image/bottle_level2.png', id: 'bottle_level2'},
         {src: 'image/bottle_level3.png', id: 'bottle_level3'},
@@ -1138,6 +1181,8 @@ function handleComplete() {
     showStage();
     addCarrot();
     addNavbar();
+    addDeathbar();
+    addList();
     setControllers();
     startGame();
 }
@@ -1211,10 +1256,16 @@ function addNavbar() {
     container.addChild(navbar.src);
 }
 
+function addDeathbar() {
+    deathbar = new Deathbar();
+    container.addChild(deathbar.src);
+}
+
 function addList() {
     list = new List();
+    list.src.visible = false;
     container.addChild(list.src);
-    stopOrContinue();
+    //stopOrContinue();
 }
 
 function setControllers() {
@@ -1235,6 +1286,9 @@ function decreaseLife() {
 }
 
 function fail() {
+    console.log("fail");
+    deathbar.src.visible = true;
+    stopOrContinue();
 }
 
 // update functions
@@ -1661,24 +1715,40 @@ function stopOrContinue(event){
     console.log("status=",status);
     if(status === 0)//if not running
     {
-        navbar.stopButton.rotation = 0;
-        navbar.stopButton.x = 760;
-        navbar.stopButton.y = 3;
-        navbar.stopButton.sourceRect = new createjs.Rectangle(1323, 310, 40, 40);
+        navbar.stopButton.sourceRect = new createjs.Rectangle(0, 0, 34, 34);
         status = 1;
     }
     else//if running
     {
-        navbar.stopButton.rotation = 270;
-        navbar.stopButton.x = 765;
-        navbar.stopButton.y = 64;
-        navbar.stopButton.sourceRect = new createjs.Rectangle(1143, 475, 40, 40);
+        navbar.stopButton.sourceRect = new createjs.Rectangle(0, 34, 34, 34);
         status = 0;
     }
 }
 
 function showList(event){
-    addList();
+    stopOrContinue();
+    list.src.visible = true;
+}
+
+function backToNormal(event){
+    stopOrContinue();
+    list.src.visible = false;
+}
+
+/*****still have bugs********/
+function restart(event){
+    life = 10;
+    coins = 5000;
+    container.removeAllChildren();
+    handleComplete();
+}
+
+/*****still have bugs********/
+function backToMain(event){
+    life = 10;
+    coins = 5000;
+    stage.visible = false;
+    initstart();
 }
 
 // calculations
