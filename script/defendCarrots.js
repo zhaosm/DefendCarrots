@@ -410,7 +410,7 @@ class Tower {
         img.regX = imgBounds.width / 2;
         img.regY = imgBounds.height / 2;
         img.x = this.src.x;
-        img.y = this.src.y - this.radius / 2;
+        img.y = this.src.y - this.radius / 2 - imgBounds.height / 3;
     }
     setIconControl() {
         // icon
