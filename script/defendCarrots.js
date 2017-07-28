@@ -1271,6 +1271,8 @@ class Barrier{
         }
 
         this.setValue(50);
+
+        this.shootThisAnimation = null;
     }
     setValue(value) {
         this.value = value;
@@ -1311,12 +1313,41 @@ class Barrier{
             terrain[cell.row][cell.col].type = 'openSpace';
             terrain[cell.row][cell.col].status = 'available';
         }
+
+        container.removeChild(this.shootThisAnimation);
     }
     stopShootingThis() {
         this.shootThis = false;
         this.src.clickToShootThis = true;
     }
+    showShootThisAnimation() {
+        if (this.shootThisAnimation) return;
+        let data = {
+            "images": [
+                queue.getResult('shootThisSpriteSheet')
+            ],
 
+            "frames": [
+                [1, 1, 20, 24],
+                [23, 1, 20, 24]
+            ],
+
+            "animations": {
+                "shootThis": {
+                    "frames": [0, 1],
+                    'speed': .3
+                },
+            }
+        };
+        let animation = new createjs.Sprite(new createjs.SpriteSheet(data), 'shootThis');
+        let animationBounds = animation.getBounds();
+        animation.regX = animationBounds.width / 2;
+        animation.regY = animationBounds.height / 2;
+        animation.x = this.src.x;
+        animation.y = this.src.y - this.src.getBounds().height / 2;
+        this.shootThisAnimation = animation;
+        container.addChild(animation);
+    }
 }
 
 // control
@@ -1475,7 +1506,8 @@ function init() {
         {src: 'image/upLevelBaseSpriteSheet.png', id: 'upLevelBaseSpriteSheet'},
         {src: 'image/bottleBase.png', id: 'bottleBase'},
         {src: 'image/upLevelLight.png', id: 'upLevelLight'},
-        {src: 'image/upGradeSpriteSheet.png', id: 'upGradeSpriteSheet'}
+        {src: 'image/upGradeSpriteSheet.png', id: 'upGradeSpriteSheet'},
+        {src: 'image/shootThisSpriteSheet.png', id: 'shootThisSpriteSheet'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', prepareToStart);
@@ -1738,6 +1770,11 @@ function updateBarriers() {
             coins += barriers[i].value;
             barriers.splice(i, 1);
             continue;
+        }
+        if (barriers[i].shootThis) barriers[i].showShootThisAnimation();
+        else {
+            container.removeChild(barriers[i].shootThisAnimation);
+            barriers[i].shootThisAnimation = null;
         }
         barriers[i].updateBlood();
         i++;
