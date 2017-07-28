@@ -102,7 +102,6 @@ class Carrot {
         this.src.regY = srcBounds.height / 2;
         this.src.x = center.x;
         this.src.y = center.y;
-        container.addChild(this.src);
 
         let cardName = life > 1 ? (life + 'lifesCard') : (life + 'lifeCard');
         let newCard = new createjs.Bitmap(queue.getResult(cardName));
@@ -111,7 +110,16 @@ class Carrot {
         newCard.x = this.lifeCard.x;
         newCard.y = this.lifeCard.y;
         container.removeChild(this.lifeCard);
-        container.addChild(newCard);
+
+        let index = getAttackCircleindex();
+        if(index > 0) {
+            container.addChildAt(this.src, index);
+            container.addChildAt(newCard, index);
+        }
+        else {
+            container.addChild(this.src);
+            container.addChild(newCard);
+        }
 
         // explode animation
         // let animation = new createjs.Sprite(new createjs.SpriteSheet(multiUseSpriteSheetData.explode), 'explode');
@@ -128,6 +136,14 @@ class Carrot {
     }
 }
 
+function getAttackCircleindex() {
+    let index = 0, len = container.numChildren;
+    for (let i = 0;i < len;i++) {
+        if (container.children[i].name === 'attackCircle' && i > index) index = i;
+    }
+    return index;
+}
+
 function showExplodeAnimation() {
     // explode animation
     let animation = new createjs.Sprite(new createjs.SpriteSheet(multiUseSpriteSheetData.explode), 'explode');
@@ -139,7 +155,11 @@ function showExplodeAnimation() {
     animation.on('animationend', function() {
         container.removeChild(this);
     });
-    container.addChild(animation);
+    let index = getAttackCircleindex();
+    if (index > 0) {
+        container.addChildAt(animation, index);
+    }
+    else container.addChild(animation);
 }
 
 class Navbar {
@@ -202,11 +222,7 @@ class Deathbar{
         this.src.scaleX = 1.5;
         this.src.scaleY = 1.5;
 
-        let transparentLayer = new createjs.Shape();
-        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth * scaleFactor, backgroundHeight * scaleFactor);
-        transparentLayer.alpha = 0.3;
-        transparentLayer.on('click', function(){});
-        this.src.addChild(transparentLayer);
+        addTransparentLayer.call(this);
 
         this.bar = new createjs.Bitmap(deathBarSrc);
         this.bar.x = 110;
@@ -232,11 +248,7 @@ class List {
         this.src.scaleX = 1.5;
         this.src.scaleY = 1.5;
 
-        let transparentLayer = new createjs.Shape();
-        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth * scaleFactor, backgroundHeight * scaleFactor);
-        transparentLayer.alpha = 0.3;
-        transparentLayer.on('click', function(){});
-        this.src.addChild(transparentLayer);
+        addTransparentLayer.call(this);
 
         let listsrc = queue.getResult('list');
         this.listBackground = new createjs.Bitmap(listsrc);
@@ -267,6 +279,14 @@ class List {
         this.backButton.addEventListener('click', backToMain);
         this.src.addChild(this.backButton);
     }
+}
+
+function addTransparentLayer() {
+    let transparentLayer = new createjs.Shape();
+    transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth * scaleFactor, backgroundHeight * scaleFactor);
+    transparentLayer.alpha = 0.3;
+    transparentLayer.on('click', function(){});
+    this.src.addChild(transparentLayer);
 }
 
 class Cell {
@@ -385,7 +405,7 @@ class Tower {
         img.regX = imgBounds.width / 2;
         img.regY = imgBounds.height / 2;
         img.x = this.src.x;
-        img.y = this.src.y - this.src.getBounds().height / 2 - imgBounds.height / 2;
+        img.y = this.src.y - this.radius / 2;
     }
     setIconControl() {
         // icon
@@ -408,6 +428,12 @@ class Tower {
         this.circle.x = this.src.x;
         this.circle.y = this.src.y;
         this.circle.alpha = 0.3;
+        this.circle.instance = this;
+        this.circle.on('click', function(){
+            this.instance.hideInformation();
+            this.instance.src.clickToShowInformation = true;
+        });
+        this.circle.name = 'attackCircle';
     }
 
     // methods
@@ -452,7 +478,12 @@ class Tower {
         animation.x = this.src.x;
         animation.y = this.src.y - this.src.getBounds().height / 2 - animationBounds.height / 2;
         this.upGradeAnimation = animation;
-        container.addChild(animation);
+
+        let index = getAttackCircleindex();
+        if (index > 0) {
+            container.addChildAt(animation, index);
+        }
+        else container.addChild(animation);
     }
     calAttackParameters(monsterContainer) {
         if (!monsterContainer) return;
@@ -488,16 +519,32 @@ class Tower {
         let center = {x: attackParameters.center.x + (attackParameters.targetCenter.x - attackParameters.center.x) * dist / tmpDist, y: attackParameters.center.y + (attackParameters.targetCenter.y - attackParameters.center.y) * dist / tmpDist};
         bullet.shoot(center, attackParameters.degree, attackParameters.targetCenter);
         bullets.push(bullet);
-        container.addChildAt(bullet.src, container.getChildIndex(this.src));
+
+        let index = getAttackCircleindex();
+        if (index > 0) {
+            container.addChildAt(bullet.src, index);
+        }
+        else container.addChild(bullet.src);
+        // container.addChildAt(bullet.src, container.getChildIndex(this.src));
 
         return {center: center, degree: attackParameters.degree, targetCenter: attackParameters.targetCenter};
     }
     showInformation() {
         // attack circle
         container.removeChild(this.circle);
+        container.removeChild(this.src);
+        if (this.constructor.name === 'Bottle') container.removeChild(this.base);
         this.initAttackCircle();
-        container.addChildAt(this.circle, container.getChildIndex(this.src));
+        container.addChild(this.circle);
+        container.addChild(this.base);
+        container.addChild(this.src);
 
+        // uplevel icon
+        this.setUpLevelImg();
+        this.setUpLevelImgPos(this.upLevelImg);
+        container.addChildAt(this.upLevelImg, container.getChildIndex(this.src));
+    }
+    setUpLevelImg() {
         // uplevel icon
         if (this.level - 1 === this.upLevelPrices.length) {
             // max level
@@ -506,22 +553,30 @@ class Tower {
         else {
             if (coins >= this.upLevelPrices[this.level - 1]) {
                 this.upLevelImg = this.upLevelImgs[(this.level - 1) * 2 + 1];
+                if (this.upLevelImg.upLevelListener) this.upLevelImg.off('click', this.upLevelImg.upLevelListener);
                 this.upLevelImg.upLevelListener = this.upLevelImg.on('click', instanceUpLevel);
             }
             else {
                 this.upLevelImg = this.upLevelImgs[(this.level - 1) * 2];
             }
         }
+    }
+    updateUpLevelImg() {
+        if (this.src.clickToShowInformation) return;
+        let index = container.getChildIndex(this.upLevelImg);
+        container.removeChild(this.upLevelImg);
+        this.setUpLevelImg();
         this.setUpLevelImgPos(this.upLevelImg);
-        container.addChildAt(this.upLevelImg, container.getChildIndex(this.src));
+        container.addChildAt(this.upLevelImg, index);
     }
     hideInformation() {
         this.upLevelImg.off('click', this.upLevelImg.upLevelListener);
         container.removeChild(this.circle);
         container.removeChild(this.upLevelImg);
-        this.upLevelImg = null;
+        // this.upLevelImg = null;
     }
     upLevel() {
+        if (this.level === 3) return;
         this.level++;
         this.radius = this.radius + cellWidth;
         coins -= this.upLevelPrices[this.level - 2];
@@ -558,8 +613,8 @@ class Tower {
         animation.on('animationend', function() {
             container.removeChild(this);
         });
-        if (this.constructor.name === 'Bottle') container.addChildAt(animation, container.getChildIndex(this.base));
-        else container.addChildAt(animation, container.getChildIndex(this.src));
+        // if (this.constructor.name === 'Bottle') container.addChildAt(animation, container.getChildIndex(this.base));
+        // else container.addChildAt(animation, container.getChildIndex(this.src));
 
         let upLevelLight = new createjs.Bitmap(queue.getResult('upLevelLight'));
         let upLevelLightBounds = upLevelLight.getBounds();
@@ -569,7 +624,18 @@ class Tower {
         upLevelLight.y = this.src.y + this.src.getBounds().height / 2 - upLevelLightBounds.height / 2;
         createjs.Tween.get(upLevelLight, {loop: false})
             .to({y: this.src.y - this.src.getBounds().height / 2, alpha: 0}, 600, createjs.Ease.getPowInOut(2));
-        container.addChild(upLevelLight);
+
+        let index = getAttackCircleindex();
+        if (index > 0) {
+            if (this.constructor.name === 'Bottle') container.addChildAt(animation, Math.max(container.getChildIndex(this.base), index));
+            else container.addChildAt(animation, Math.max(container.getChildIndex(this.src), index));
+            container.addChildAt(upLevelLight, index)
+        }
+        else {
+            if (this.constructor.name === 'Bottle') container.addChildAt(animation, container.getChildIndex(this.base));
+            else container.addChildAt(animation, container.getChildIndex(this.src));
+            container.addChild(upLevelLight);
+        }
     }
 }
 
@@ -598,7 +664,6 @@ class Bottle extends Tower{
         this.base.regY = baseBounds.height / 2;
         this.base.x = center.x;
         this.base.y = center.y;
-        container.addChild(this.base);
     }
     setParameters() {
         super.setParameters();
@@ -787,7 +852,7 @@ class Sun extends Tower {
         animation.on('animationend', function() {
             container.removeChild(this);
         });
-        container.addChild(animation);
+
         monsterContainer.blood -= this.power;
 
         let fireAnimation = new createjs.Sprite(this.fireSpriteSheet, 'fire');
@@ -799,7 +864,16 @@ class Sun extends Tower {
         fireAnimation.on('animationend', function() {
             container.removeChild(this);
         });
-        container.addChild(fireAnimation);
+
+        let index = getAttackCircleindex();
+        if (index > 0) {
+            container.addChildAt(animation, index);
+            container.addChildAt(fireAnimation, index);
+        }
+        else {
+            container.addChild(animation);
+            container.addChild(fireAnimation);
+        }
     }
     upLevel() {
         super.upLevel();
@@ -981,9 +1055,14 @@ class Monster {
         animation.on('animationend', function() {
             container.removeChild(this);
         });
-        container.addChild(animation);
 
-        showValue.call(this, spriteBounds);
+        let index = getAttackCircleindex();
+        if (index > 0) {
+            container.addChildAt(animation, index);
+        }
+        else container.addChild(animation);
+
+        showValue.call(this, spriteBounds, index);
     }
     slowDown(power) {
         if (this.isSlowDown) return;
@@ -1000,12 +1079,17 @@ class Monster {
     }
 }
 
-function showValue(spriteBounds) {
+function showValue(spriteBounds, index) {
     let value = new createjs.Bitmap(queue.getResult('value' + this.value));
     value.x = this.src.x;
     let originY = this.src.y - spriteBounds.height / 2 + value.getBounds().height / 2;
     value.y = originY;
-    container.addChild(value);
+
+    if (index > 0) {
+        container.addChildAt(value, index);
+    }
+    else container.addChild(value);
+
     createjs.Tween.get(value, {loop: false})
         .to({y: originY - cellHeight * 0.3}, 600, createjs.Ease.getPowInOut(4))
         .to({alpha: 0, y: originY - cellHeight * 0.5}, 400, createjs.Ease.getPowInOut(2))
@@ -1146,7 +1230,12 @@ class Bullet {
         animation.on('animationend', function() {
             container.removeChild(this);
         });
-        container.addChild(animation);
+
+        let index = getAttackCircleindex();
+        if (index > 0) {
+            container.addChildAt(animation, index);
+        }
+        else container.addChild(animation);
     }
 }
 
@@ -1346,7 +1435,12 @@ class Barrier{
         animation.x = this.src.x;
         animation.y = this.src.y - this.src.getBounds().height / 2;
         this.shootThisAnimation = animation;
-        container.addChild(animation);
+
+        let index = getAttackCircleindex();
+        if (index > 0) {
+            container.addChildAt(animation, index);
+        }
+        else container.addChild(animation);
     }
 }
 
@@ -1666,6 +1760,8 @@ function decreaseLife() {
 
 function fail() {
     console.log("fail");
+    container.removeChild(deathbar.src);
+    container.addChild(deathbar.src);
     deathbar.src.visible = true;
     stopOrContinue();
 }
@@ -1790,6 +1886,7 @@ function updateTowers() {
             container.removeChild(tower.upGradeAnimation);
             tower.upGradeAnimation = null;
         }
+        tower.updateUpLevelImg();
     }
 
     towerTimer++;
@@ -1921,7 +2018,17 @@ function generateMonster(type) {
     }
     if (monster) {
         monsters.push(monster);
-        container.addChild(monster.src);
+        let index = 0, len = container.numChildren;
+        for (let i = 0;i < len;i++) {
+            if (container.children[i].name === 'attackCircle' && i > index) {
+                index = i;
+            }
+        }
+        if(index > 0) {
+            container.addChildAt(monster.src, index);
+        }
+        else container.addChild(monster.src);
+
     }
 }
 
@@ -2081,7 +2188,17 @@ function buildTower(type, center) {
         tower = new Shit(center);
     }
     towers.push(tower);
-    container.addChild(tower.src);
+
+    let index = getAttackCircleindex();
+    if (index > 0) {
+        container.addChildAt(tower.src, index);
+        container.addChildAt(tower.base, container.getChildIndex(tower.src));
+    }
+    else {
+        if(tower.constructor.name === 'Bottle') container.addChild(tower.base);
+        container.addChild(tower.src);
+    }
+
     coins -= tower.price;
 }
 
