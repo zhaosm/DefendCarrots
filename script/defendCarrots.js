@@ -357,6 +357,7 @@ class Tower {
         this.upLevelImg = null;
         this.priceImgNames = [];
         this.base = null;
+        this.upGradeAnimation = null;
     }
     setLevelIconNames() {
     }
@@ -425,6 +426,33 @@ class Tower {
             }
         }
         return closest;
+    }
+    ableToUpGrade() {
+        if (this.upGradeAnimation) return;
+        let data = {
+            "images": [
+                queue.getResult('upGradeSpriteSheet'),
+            ],
+            "frames": [
+                [1, 1, 20, 24],
+                [23, 1, 20, 24]
+            ],
+
+            "animations": {
+                "upGrade": {
+                    "frames": [0, 1],
+                    'speed': 1
+                }
+            }
+        };
+        let animation = new createjs.Sprite(new createjs.SpriteSheet(data), 'upGrade');
+        let animationBounds = animation.getBounds();
+        animation.regX = animationBounds.width / 2;
+        animation.regY = animationBounds.height / 2;
+        animation.x = this.src.x;
+        animation.y = this.src.y - this.src.getBounds().height / 2 - animationBounds.height / 2;
+        this.upGradeAnimation = animation;
+        container.addChild(animation);
     }
     calAttackParameters(monsterContainer) {
         if (!monsterContainer) return;
@@ -1446,7 +1474,8 @@ function init() {
         {src: 'image/sunFireSpriteSheet.png', id: 'sunFireSpriteSheet'},
         {src: 'image/upLevelBaseSpriteSheet.png', id: 'upLevelBaseSpriteSheet'},
         {src: 'image/bottleBase.png', id: 'bottleBase'},
-        {src: 'image/upLevelLight.png', id: 'upLevelLight'}
+        {src: 'image/upLevelLight.png', id: 'upLevelLight'},
+        {src: 'image/upGradeSpriteSheet.png', id: 'upGradeSpriteSheet'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', prepareToStart);
@@ -1718,6 +1747,12 @@ function updateBarriers() {
 function updateTowers() {
     /*
     * 找怪物，产生子弹*/
+    for (let tower of towers) {
+        if (coins >= tower.price) tower.ableToUpGrade();
+        else container.removeChild(tower.upGradeAnimation);
+        tower.upGradeAnimation = null;
+    }
+
     towerTimer++;
     let shootBarrier = false, targetBarrier = null;
     for(let barrier of barriers) {
