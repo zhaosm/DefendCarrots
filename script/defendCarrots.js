@@ -550,27 +550,30 @@ class Bottle extends Tower{
 class Sun extends Tower {
     constructor(center, ...args) {
         super(...args);
-        // sprite
-        let spriteSheetImg = queue.getResult('sunSpriteSheet');
-        let data = {
-            images: [spriteSheetImg],
-            frames: [
-                [1, 1, 301, 301],
-                [304, 1, 301, 301],
-                [607, 1, 301, 301],
-                [910, 1, 301, 301],
-                [1213, 1, 301, 301]
-            ],
-            animations: {
-                level1: {
-                    frames: [0, 1, 2, 3, 4],
-                    speed: .3
-                }
-            }
-        };
-        this.spriteSheet = new createjs.SpriteSheet(data);
 
-        this.radius = spriteSheetImg.width / 10;
+        // sprite
+        this.attackSpriteSheets = [];
+        this.setAttackSpriteSheets();
+        // let spriteSheetImg = queue.getResult('sunSpriteSheet');
+        // let data = {
+        //     images: [spriteSheetImg],
+        //     frames: [
+        //         [1, 1, 301, 301],
+        //         [304, 1, 301, 301],
+        //         [607, 1, 301, 301],
+        //         [910, 1, 301, 301],
+        //         [1213, 1, 301, 301]
+        //     ],
+        //     animations: {
+        //         level1: {
+        //             frames: [0, 1, 2, 3, 4],
+        //             speed: .3
+        //         }
+        //     }
+        // };
+        // this.spriteSheet = new createjs.SpriteSheet(data);
+
+        this.radius = this.attackSpriteSheets[0].getFrame(0).rect.width / 2;
 
         // icon
         this.setIcon('sun_level1', center);
@@ -589,6 +592,69 @@ class Sun extends Tower {
 
         // debug
         // this.attacked = false;
+    }
+    setAttackSpriteSheets() {
+        let data = {
+            "images": [
+                queue.getResult('sunAttack_level1_spriteSheet'),
+            ],
+
+            "frames": [
+                [1, 1, 200, 200],
+                [203, 1, 200, 200],
+                [405, 1, 200, 200]
+            ],
+
+            "animations": {
+                "attack": {
+                    "frames": [0, 1, 2],
+                    'speed': .3
+                }
+            }
+        };
+        this.attackSpriteSheets.push(new createjs.SpriteSheet(data));
+
+        data = {
+            "images": [
+                queue.getResult('sunAttack_level2_spriteSheet'),
+            ],
+
+            "frames": [
+                [1, 1, 245, 245],
+                [248, 1, 245, 245],
+                [495, 1, 245, 245],
+                [742, 1, 245, 245]
+            ],
+
+            "animations": {
+                "attack": {
+                    "frames": [0, 1, 2, 3],
+                    'speed': .3
+                }
+            }
+        };
+        this.attackSpriteSheets.push(new createjs.SpriteSheet(data));
+
+        data = {
+            "images": [
+                queue.getResult('sunAttack_level3_spriteSheet')
+            ],
+
+            "frames": [
+                [1, 1, 300, 300],
+                [303, 1, 300, 300],
+                [605, 1, 300, 300],
+                [907, 1, 300, 300]
+            ],
+
+            "animations": {
+                "attack": {
+                    "frames": [0, 1, 2, 3],
+                    'speed': .3
+                }
+            }
+        };
+        this.attackSpriteSheets.push(new createjs.SpriteSheet(data));
     }
     setParameters() {
         super.setParameters();
@@ -611,7 +677,7 @@ class Sun extends Tower {
     }
     attack(monsterContainer) {
         // if (this.attacked) return;
-        let animation = new createjs.Sprite(this.spriteSheet, 'level1');
+        let animation = new createjs.Sprite(this.attackSpriteSheets[this.level - 1], 'attack');
         animation.regX = animation.regY = this.radius;
         animation.x = this.src.x;
         animation.y = this.src.y;
@@ -620,6 +686,13 @@ class Sun extends Tower {
         });
         container.addChild(animation);
         monsterContainer.blood -= this.power;
+    }
+    upLevel() {
+        super.upLevel();
+        let spriteSheet = this.attackSpriteSheets[this.level - 1];
+        this.radius = spriteSheet.getFrame(spriteSheet.getNumFrames('attack') - 1).rect.width / 2;
+        // debug
+        console.log(this.radius);
     }
     findTargets(monsterList) {
         let targets = [];
@@ -1272,7 +1345,10 @@ function init() {
         {src: 'image/value150.png', id: 'value150'},
         {src: 'image/explodeSpriteSheet.png', id: 'explodeSpriteSheet'},
         {src: 'image/bottleBulletHitSpriteSheet.png', id: 'bottleBulletHitSpriteSheet'},
-        {src: 'image/pooHitSpriteSheet.png', id: 'pooHitSpriteSheet'}
+        {src: 'image/pooHitSpriteSheet.png', id: 'pooHitSpriteSheet'},
+        {src: 'image/sunAttack_level1_spriteSheet.png', id: 'sunAttack_level1_spriteSheet'},
+        {src: 'image/sunAttack_level2_spriteSheet.png', id: 'sunAttack_level2_spriteSheet'},
+        {src: 'image/sunAttack_level3_spriteSheet.png', id: 'sunAttack_level3_spriteSheet'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', prepareToStart);
