@@ -29,7 +29,7 @@ let bloodWidth, bloodHeight;
 let multiUseSpriteSheetData = {};
 // navBar
 let navbar, list, deathbar;
-const originCoins = 5000;
+const originCoins = 400;
 let life = 10, coins = originCoins;
 let speed = 1;
 
@@ -441,11 +441,11 @@ class Tower {
             "animations": {
                 "upGrade": {
                     "frames": [0, 1],
-                    'speed': 1
+                    'speed': 0.2
                 }
             }
         };
-        let animation = new createjs.Sprite(new createjs.SpriteSheet(data), 'upGrade');
+        let animation = new createjs.Sprite((new createjs.SpriteSheet(data)), 'upGrade');
         let animationBounds = animation.getBounds();
         animation.regX = animationBounds.width / 2;
         animation.regY = animationBounds.height / 2;
@@ -1748,9 +1748,11 @@ function updateTowers() {
     /*
     * 找怪物，产生子弹*/
     for (let tower of towers) {
-        if (coins >= tower.price) tower.ableToUpGrade();
-        else container.removeChild(tower.upGradeAnimation);
-        tower.upGradeAnimation = null;
+        if (tower.level < 3 && coins >= tower.upLevelPrices[tower.level - 1]) tower.ableToUpGrade();
+        else {
+            container.removeChild(tower.upGradeAnimation);
+            tower.upGradeAnimation = null;
+        }
     }
 
     towerTimer++;
