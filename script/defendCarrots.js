@@ -21,11 +21,12 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters, barriers and towers
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 50, speedFactor = 1;// speed: per second
-
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 2, monsterBlood = 100;// , speedFactor = 1;// speed: per second
 let monsters = [], towers = [], bullets = [];
 let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 let bloodWidth, bloodHeight;
+// multi-use sprite sheet data
+let multiUseSpriteSheetData = {};
 // navBar
 let navbar, list, deathbar;
 const originCoins = 5000;
@@ -80,6 +81,7 @@ class Carrot {
     }
     updateLife(life) {
         if (life <= 0 || life > 10) return;
+
         let center = {x: this.src.x, y: this.src.y};
         container.removeChild(this.src);
         if (life === 9) {
@@ -110,7 +112,34 @@ class Carrot {
         newCard.y = this.lifeCard.y;
         container.removeChild(this.lifeCard);
         container.addChild(newCard);
+
+        // explode animation
+        // let animation = new createjs.Sprite(new createjs.SpriteSheet(multiUseSpriteSheetData.explode), 'explode');
+        // let animationBounds = animation.getBounds();
+        // animation.regX = animationBounds.width / 2;
+        // animation.regY = animationBounds.height / 2;
+        // animation.x = this.src.x;
+        // animation.y = this.src.y;
+        // animation.on('animationend', function() {
+        //     container.removeChild(this);
+        // });
+        // container.addChild(animation);
+        showExplodeAnimation.call(this);
     }
+}
+
+function showExplodeAnimation() {
+    // explode animation
+    let animation = new createjs.Sprite(new createjs.SpriteSheet(multiUseSpriteSheetData.explode), 'explode');
+    let animationBounds = animation.getBounds();
+    animation.regX = animationBounds.width / 2;
+    animation.regY = animationBounds.height / 2;
+    animation.x = this.src.x;
+    animation.y = this.src.y;
+    animation.on('animationend', function() {
+        container.removeChild(this);
+    });
+    container.addChild(animation);
 }
 
 class Navbar {
@@ -172,6 +201,12 @@ class Deathbar{
         this.src = new createjs.Container();
         this.src.scaleX = 1.5;
         this.src.scaleY = 1.5;
+
+        let transparentLayer = new createjs.Shape();
+        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth, backgroundHeight);
+        transparentLayer.alpha = 0.3;
+        transparentLayer.on('click', function(){});
+        this.src.addChild(transparentLayer);
 
         this.bar = new createjs.Bitmap(deathBarSrc);
         this.bar.x = 110;
@@ -314,7 +349,7 @@ class Tower {
         this.src = null;
         this.radius = towerRadius;
         this.level = 1;
-        this.power = 0.5;
+        this.power = 20;
         this.price = towerPrice;
         this.upLevelPrices = [];
         this.upLevelImgs = [];
@@ -430,6 +465,8 @@ class Tower {
     }
     showInformation() {
         // attack circle
+        container.removeChild(this.circle);
+        this.initAttackCircle();
         container.addChildAt(this.circle, container.getChildIndex(this.src));
 
         // uplevel icon
@@ -457,11 +494,12 @@ class Tower {
     }
     upLevel() {
         this.level++;
+        this.radius = this.radius + cellWidth;
         coins -= this.upLevelPrices[this.level - 2];
         this.resetIcon(this.levelIconNames[this.level - 1]);
 
         // debug
-        alert(this.constructor.name + " uplevel, new level: " + this.level + ", coins remain: " + coins);
+        // alert(this.constructor.name + " uplevel, new level: " + this.level + ", coins remain: " + coins);
     }
 }
 
@@ -481,11 +519,13 @@ class Bottle extends Tower{
         ];
         this.initUpLevelImgs(upLevelSrc);
         this.initAttackCircle();
+
+        showExplodeAnimation.call(this);
     }
     setParameters() {
         super.setParameters();
         this.radius = cellWidth * 2;
-        this.power = 0.25;
+        this.power = 25;
         this.price = 100;
         this.upLevelPrices = [180, 260];
         this.priceImgNames = [
@@ -552,7 +592,7 @@ class Sun extends Tower {
     }
     setParameters() {
         super.setParameters();
-        this.power = 0.2;
+        this.power = 20;
         this.price = 180;
         this.timer = 0;
         this.upLevelPrices = [260, 320];
@@ -649,7 +689,7 @@ class Monster {
         let blood = this.createBlood(monsterBounds);
         this.setContainer(monster, blood);
         this.setDieSprite();
-        this.originspeed = monsterSpeed;
+        this.originspeed = monsterSpeed
         this.speed = this.originspeed;
         this.slowDownTimer = 0;
         this.isSlowDown = false;
@@ -695,7 +735,8 @@ class Monster {
         // return the sprite instance
     }
     setBloodParameters(monsterBounds) {
-        this.blood = 1;
+        this.originBlood = monsterBlood;
+        this.blood = this.originBlood;
         this.bloodColor = "#21ff12";
         // this.bloodHeight = monsterBounds.height / 5;
         // this.bloodDist = monsterBounds.height / 5;
@@ -716,7 +757,7 @@ class Monster {
     }
     createBlood(monsterBounds) {
         let blood = new createjs.Shape();
-        blood.graphics.beginFill(this.bloodColor).drawRect(monsterBounds.width / 2 - this.bloodWidth / 2, 0, this.bloodWidth * this.blood, this.bloodHeight);
+        blood.graphics.beginFill(this.bloodColor).drawRect(monsterBounds.width / 2 - this.bloodWidth / 2, 0, this.bloodWidth * this.blood / this.originBlood, this.bloodHeight);
         // blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.bloodWidth, this.bloodHeight);
         blood.name = 'blood';
         return blood;
@@ -733,23 +774,7 @@ class Monster {
         this.src.addChild(monster);
     }
     setDieSprite() {
-        let dieData = {
-            "images": [
-                queue.getResult("monsterDieSpriteSheet")
-            ],
-            "frames": [
-                [1, 1, 175, 178],
-                [178, 1, 175, 178],
-                [355, 1, 175, 178],
-                [532, 1, 175, 178]
-            ],
-            "animations": {
-                "monsterDie": {
-                    "frames": [0, 1, 2, 3],
-                    'speed': .3
-                }
-            }
-        };
+        let dieData = multiUseSpriteSheetData.monsterDie;
         this.dieSpriteSheet = new createjs.SpriteSheet(dieData);
     }
     updateBlood() {
@@ -769,6 +794,15 @@ class Monster {
             container.removeChild(this);
         });
         container.addChild(animation);
+
+        let value = new createjs.Bitmap(queue.getResult('value' + this.value));
+        value.x = this.src.x;
+        let originY = this.src.y - spriteBounds.height / 2 + value.getBounds().height / 2;
+        value.y = originY;
+        container.addChild(value);
+        createjs.Tween.get(value, {loop: false})
+            .to({y: originY - cellHeight * 0.3}, 600, createjs.Ease.getPowInOut(4))
+            .to({alpha: 0, y: originY - cellHeight * 0.5}, 400, createjs.Ease.getPowInOut(2))
     }
     slowDown(power) {
         if (this.isSlowDown) return;
@@ -821,6 +855,7 @@ class FastMonster extends Monster {
         super(...args);
         this.originspeed = monsterSpeed * 2;
         this.speed = this.originspeed;
+        this.blood = this.originBlood = monsterBlood * 0.7;
     }
     createSprite() {
         let monsterData = {
@@ -861,6 +896,7 @@ class SlowMonster extends Monster {
         super(...args);
         this.originspeed = monsterSpeed / 2;
         this.speed = this.originspeed;
+        this.blood = this.originBlood = monsterBlood * 2;
     }
     createSprite() {
         let monsterData = {
@@ -889,7 +925,10 @@ class Bullet {
     constructor() {
         this.src = null;
         this.speed = bottleBulletSpeed;
+        this.hitSpriteSheet = null;
+        this.setHitSpriteSheet();
     }
+    setHitSpriteSheet() {}
     shoot(center, rotation, targetCenter) {
         let srcBounds = this.src.getBounds();
         this.src.regX = srcBounds.width / 2;
@@ -906,6 +945,16 @@ class Bullet {
             .to({x: destCenter.x, y: destCenter.y}, time);
     }
     attack(monsterContainer) {
+        let animation = new createjs.Sprite(this.hitSpriteSheet, 'hit');
+        let animationBounds = animation.getBounds();
+        animation.regX = animationBounds.width / 2;
+        animation.regY = animationBounds.height / 2;
+        animation.x = monsterContainer.src.x;
+        animation.y = monsterContainer.src.y;
+        animation.on('animationend', function() {
+            container.removeChild(this);
+        });
+        container.addChild(animation);
     }
 }
 
@@ -915,9 +964,30 @@ class BottleBullet extends Bullet {
         let src = queue.getResult('bottleBullet_level' + level);
         this.src = new createjs.Bitmap(src);
         this.speed = bottleBulletSpeed * level;
-        this.power = 0.1 * level;
+        this.power = 25 + 5 * level;
+    }
+    setHitSpriteSheet() {
+        let data = {
+            "images": [
+                queue.getResult('bottleBulletHitSpriteSheet'),
+            ],
+
+            "frames": [
+                [1, 1, 60, 60],
+                [63, 1, 60, 60]
+            ],
+
+            "animations": {
+                "hit": {
+                    "frames": [0, 1],
+                    'speed': .4
+                },
+            }
+        };
+        this.hitSpriteSheet = new createjs.SpriteSheet(data);
     }
     attack(monsterContainer) {
+        super.attack(monsterContainer);
         monsterContainer.blood -= this.power;
     }
 }
@@ -931,7 +1001,28 @@ class Poo extends Bullet {
         this.power = 0.3 * level;
     }
     attack(monsterContainer) {
+        super.attack(monsterContainer);
         if (!monsterContainer.isSlowDown) monsterContainer.slowDown(this.power);
+    }
+    setHitSpriteSheet() {
+        let data = {
+            "images": [
+                queue.getResult('pooHitSpriteSheet')
+            ],
+
+            "frames": [
+                [1, 1, 47, 52],
+                [50, 1, 47, 52]
+            ],
+
+            "animations": {
+                "hit": {
+                    "frames": [0, 1],
+                    'speed': .4
+                },
+            }
+        };
+        this.hitSpriteSheet = new createjs.SpriteSheet(data);
     }
 }
 
@@ -977,23 +1068,8 @@ class Barrier{
         this.src.addChild(icon);
         this.src.addChild(blood);
 
-        let dieData = {
-            "images": [
-                queue.getResult("monsterDieSpriteSheet")
-            ],
-            "frames": [
-                [1, 1, 175, 178],
-                [178, 1, 175, 178],
-                [355, 1, 175, 178],
-                [532, 1, 175, 178]
-            ],
-            "animations": {
-                "monsterDie": {
-                    "frames": [0, 1, 2, 3],
-                    'speed': .3
-                }
-            }
-        };
+        let dieData = multiUseSpriteSheetData.monsterDie;
+
         this.dieSpriteSheet = new createjs.SpriteSheet(dieData);
 
         this.cells = cells;
@@ -1189,7 +1265,14 @@ function init() {
         {src: 'image/7lifesCard.png', id: '7lifesCard'},
         {src: 'image/8lifesCard.png', id: '8lifesCard'},
         {src: 'image/9lifesCard.png', id: '9lifesCard'},
-        {src: 'image/10lifesCard.png', id: '10lifesCard'}
+        {src: 'image/10lifesCard.png', id: '10lifesCard'},
+        {src: 'image/value14.png', id: 'value14'},
+        {src: 'image/value50.png', id: 'value50'},
+        {src: 'image/value75.png', id: 'value75'},
+        {src: 'image/value150.png', id: 'value150'},
+        {src: 'image/explodeSpriteSheet.png', id: 'explodeSpriteSheet'},
+        {src: 'image/bottleBulletHitSpriteSheet.png', id: 'bottleBulletHitSpriteSheet'},
+        {src: 'image/pooHitSpriteSheet.png', id: 'pooHitSpriteSheet'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', prepareToStart);
@@ -1207,6 +1290,8 @@ function handleComplete() {
 }
 
 function showStage() {
+    setSpriteSheetData();
+
     let backgroundsrc = queue.getResult('background');
     background = new createjs.Bitmap(backgroundsrc);
     backgroundWidth = backgroundsrc.width;
@@ -1221,6 +1306,45 @@ function showStage() {
     // stage.addChild(container);
 
     generateBarriers();
+}
+
+function setSpriteSheetData() {
+    multiUseSpriteSheetData.explode = {
+        "images": [
+            queue.getResult('explodeSpriteSheet'),
+        ],
+
+        "frames": [
+            [1, 1, 174, 164],
+            [177, 1, 174, 164],
+            [353, 1, 174, 164],
+            [529, 1, 174, 164]
+        ],
+
+        "animations": {
+            "explode": {
+                "frames": [0, 1, 2, 3],
+                'speed': .3
+            },
+        }
+    };
+    multiUseSpriteSheetData.monsterDie = {
+        "images": [
+            queue.getResult("monsterDieSpriteSheet")
+        ],
+        "frames": [
+            [1, 1, 175, 178],
+            [178, 1, 175, 178],
+            [355, 1, 175, 178],
+            [532, 1, 175, 178]
+        ],
+        "animations": {
+            "monsterDie": {
+                "frames": [0, 1, 2, 3],
+                'speed': .3
+            }
+        }
+    };
 }
 
 function setParametersRelatedToBackgroundSize() {
@@ -1374,7 +1498,6 @@ function updateMonsters() {
                 fail();
             }
             container.removeChild(monsters[i].src);
-            monsters[i].die();
             monsters.splice(i, 1);
             continue;
         }
