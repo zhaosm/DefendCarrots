@@ -288,7 +288,7 @@ class List {
 
 function addTransparentLayer() {
     let transparentLayer = new createjs.Shape();
-    transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth * scaleFactor, backgroundHeight * scaleFactor);
+    transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, container.getBounds().width, container.getBounds().height);
     transparentLayer.alpha = 0.3;
     transparentLayer.on('click', function(){});
     this.src.addChild(transparentLayer);
@@ -1515,8 +1515,8 @@ function prepareToStart() {
 
 function resize() {
     if (!stage) return;
-    stage.canvas.width = window.innerWidth;
-    stage.canvas.height = window.innerHeight;
+    stage.canvas.width = window.width();
+    stage.canvas.height = window.height();
 
     scaleFactor = Math.min(stage.canvas.width / backgroundWidth, stage.canvas.height / backgroundHeight);
     container.scaleX = scaleFactor;
