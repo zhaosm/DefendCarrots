@@ -1515,8 +1515,11 @@ function prepareToStart() {
 
 function resize() {
     if (!stage) return;
-    stage.canvas.width = window.width();
-    stage.canvas.height = window.height();
+    stage.canvas.width = window.innerWidth;
+    stage.canvas.height = window.innerHeight;
+    let rect = document.getBoundingClientRect();
+    stage.canvas.x = rect.left;
+    stage.canvas.y = rect.top;
 
     scaleFactor = Math.min(stage.canvas.width / backgroundWidth, stage.canvas.height / backgroundHeight);
     container.scaleX = scaleFactor;
