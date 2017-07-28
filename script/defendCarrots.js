@@ -16,7 +16,7 @@ $canvas.attr("width", stageWidth + "");
 $canvas.attr('height', stageHeight + "");
 
 //game status
-let status;//1=running 0=stop
+let status;
 // background and containers
 let stage, queue, background, container = null;
 let tempQueue;
@@ -26,7 +26,7 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters, barriers and towers
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 2, monsterBlood = 100, barrierBlood = 200;// , speedFactor = 1;// speed: per second
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 2, monsterBlood = 100, barrierBlood = 200;
 let monsters = [], towers = [], bullets = [];
 let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 let bloodWidth, bloodHeight;
@@ -446,8 +446,6 @@ class Tower {
         let closest = null, closestDist = 1000000000;
         for (let monsterContainer of monsterList) {
             let monster = monsterContainer.src.getChildByName('monster');
-            // let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
-            // let towerpt = container.localToLocal(this.src.x, this.src.y, container);
             if (eucDistance(this.src.x, this.src.y, monsterContainer.src.x, monsterContainer.src.y) <= this.radius) {
                 let dist = eucDistance(monsterContainer.src.x, monsterContainer.src.y, carrotCenter.x, carrotCenter.y);
                 if (dist < closestDist) {
@@ -492,15 +490,8 @@ class Tower {
     }
     calAttackParameters(monsterContainer) {
         if (!monsterContainer) return;
-        // let towerpt = container.localToLocal(this.src.x, this.src.y, container);
         let center = {x: this.src.x, y: this.src.y};
-        // let monster = monsterContainer.src.getChildByName('monster');
-        // let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
-        // let center = getCenterCoordinate(leftTop, this.src.image.width, this.src.image.height);
-        // let p1 = {x: this.src.x, y: this.src.y + this.src.image.height / 2};
         let targetCenter = {x: monsterContainer.src.x, y: monsterContainer.src.y};
-        // let degree = calAngle({x: this.src.x, y: this.src.y}, p1, targetCenter, 'degrees');
-        // this.src.rotation = -degree;
         let degree = Math.atan2(targetCenter.y - this.src.y, targetCenter.x - this.src.x) * (180 / Math.PI);
         if (degree < 0) degree = 360 - (-degree);
         degree += 90;
@@ -510,7 +501,6 @@ class Tower {
         if (!monsterContainer) return;
         if (this.constructor.name === 'Shit' && monsterContainer.isSlowDown) return;
         let attackParameters = this.calAttackParameters(monsterContainer);
-        // this.src.rotation = attackParameters.degree;
         let bullet = null;
         if (this.constructor.name === 'Bottle') {
             bullet = new BottleBullet(this.level);
@@ -530,7 +520,6 @@ class Tower {
             container.addChildAt(bullet.src, index);
         }
         else container.addChild(bullet.src);
-        // container.addChildAt(bullet.src, container.getChildIndex(this.src));
 
         return {center: center, degree: attackParameters.degree, targetCenter: attackParameters.targetCenter};
     }
@@ -578,7 +567,6 @@ class Tower {
         this.upLevelImg.off('click', this.upLevelImg.upLevelListener);
         container.removeChild(this.circle);
         container.removeChild(this.upLevelImg);
-        // this.upLevelImg = null;
     }
     upLevel() {
         if (this.level === 3) return;
@@ -587,9 +575,6 @@ class Tower {
         coins -= this.upLevelPrices[this.level - 2];
         this.resetIcon(this.levelIconNames[this.level - 1]);
         this.showUpLevelAnimation();
-
-        // debug
-        // alert(this.constructor.name + " uplevel, new level: " + this.level + ", coins remain: " + coins);
     }
     showUpLevelAnimation() {
         let data = {
@@ -618,8 +603,6 @@ class Tower {
         animation.on('animationend', function() {
             container.removeChild(this);
         });
-        // if (this.constructor.name === 'Bottle') container.addChildAt(animation, container.getChildIndex(this.base));
-        // else container.addChildAt(animation, container.getChildIndex(this.src));
 
         let upLevelLight = new createjs.Bitmap(queue.getResult('upLevelLight'));
         let upLevelLightBounds = upLevelLight.getBounds();
@@ -702,24 +685,6 @@ class Sun extends Tower {
         // sprite
         this.attackSpriteSheets = [];
         this.setAttackSpriteSheets();
-        // let spriteSheetImg = queue.getResult('sunSpriteSheet');
-        // let data = {
-        //     images: [spriteSheetImg],
-        //     frames: [
-        //         [1, 1, 301, 301],
-        //         [304, 1, 301, 301],
-        //         [607, 1, 301, 301],
-        //         [910, 1, 301, 301],
-        //         [1213, 1, 301, 301]
-        //     ],
-        //     animations: {
-        //         level1: {
-        //             frames: [0, 1, 2, 3, 4],
-        //             speed: .3
-        //         }
-        //     }
-        // };
-        // this.spriteSheet = new createjs.SpriteSheet(data);
         this.fireSpriteSheet = null;
         this.setFireSpriteSheet();
 
@@ -739,9 +704,6 @@ class Sun extends Tower {
         this.initUpLevelImgs(upLevelSrc);
 
         this.initAttackCircle();
-
-        // debug
-        // this.attacked = false;
     }
     setAttackSpriteSheets() {
         let data = {
@@ -936,14 +898,6 @@ class Shit extends Tower {
             'shit_level3'
         ]
     }
-    // attack(monsterContainer) {
-    //     if (!monsterContainer) return;
-    //     let attackParameters = this.calAttackParameters(monsterContainer);
-    //     let bullet = new Bullet('poo_level' + this.level, attackParameters.center, attackParameters.degree, attackParameters.targetCenter);
-    //     bullets.push(bullet);
-    //     container.addChildAt(bullet.src, container.getChildIndex(this.src));
-    //
-    // }
 }
 
 class Monster {
@@ -1004,17 +958,12 @@ class Monster {
         this.originBlood = monsterBlood;
         this.blood = this.originBlood;
         this.bloodColor = "#0b8672";
-        // this.bloodHeight = monsterBounds.height / 5;
-        // this.bloodDist = monsterBounds.height / 5;
         this.bloodHeight = bloodHeight;
         this.bloodDist = this.bloodHeight;
         this.bloodWidth = bloodWidth;
     }
     setSpriteParameters(monster) {
         let monsterBounds = monster.getBounds();
-        // let center = getTerrainCellCenter(land[0].row, land[0].col);
-        // let monster = new createjs.Bitmap(monstersrc);
-        // let monsterBounds = monster.getBounds();
         monster.regX = monsterBounds.width / 2;
         monster.regY = monsterBounds.height / 2;
         monster.x = monster.regX;
@@ -1025,7 +974,6 @@ class Monster {
         let blood = new createjs.Shape();
         blood.graphics.beginFill(this.bloodColor).drawRect(monsterBounds.width / 2 - this.bloodWidth / 2, 0, this.bloodWidth * this.blood / this.originBlood, this.bloodHeight);
         blood.alpha = 0.6;
-        // blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.bloodWidth, this.bloodHeight);
         blood.name = 'blood';
         return blood;
     }
@@ -1161,9 +1109,6 @@ class FastMonster extends Monster {
     }
     setSpriteParameters(monster) {
         let monsterBounds = monster.getBounds();
-        // let center = getTerrainCellCenter(land[0].row, land[0].col);
-        // let monster = new createjs.Bitmap(monstersrc);
-        // let monsterBounds = monster.getBounds();
         monster.regX = monsterBounds.width * 0.66;
         monster.regY = monsterBounds.height * 0.81;
         monster.x = monster.regX;
@@ -1318,8 +1263,6 @@ class Barrier{
         let iconBounds = icon.getBounds();
         icon.regX = iconBounds.width / 2;
         icon.regY = iconBounds.height / 2;
-        // this.bloodHeight = iconBounds.height / 5;
-        // this.bloodDist = iconBounds.height / 5;
         this.bloodHeight = bloodHeight;
         this.bloodDist = this.bloodHeight;
         this.bloodWidth = bloodWidth;
@@ -1378,7 +1321,6 @@ class Barrier{
     createBlood(iconBounds) {
         let blood = new createjs.Shape();
         blood.graphics.beginFill(this.bloodColor).drawRect(iconBounds.width / 2 - this.bloodWidth / 2, iconBounds.height / 4, this.bloodWidth * this.blood / this.originBlood, this.bloodHeight);
-        // blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.bloodWidth, this.bloodHeight);
         blood.alpha = 0.6;
         blood.name = 'blood';
         return blood;
@@ -1472,7 +1414,6 @@ function start(){
     let bg = new createjs.Bitmap(startSceneSrc);
     backgroundWidth = startSceneSrc.width;
     backgroundHeight = startSceneSrc.height;
-    //setParametersRelatedToBackgroundSize();
     scaleFactor = Math.min(stage.canvas.width / startSceneSrc.width, stage.canvas.height / startSceneSrc.height);
     container.addChild(bg);
     container.scaleX = scaleFactor;
@@ -1649,7 +1590,6 @@ function showStage() {
     container.addChild(background);
     container.scaleX = scaleFactor;
     container.scaleY = scaleFactor;
-    // stage.addChild(container);
 
     generateBarriers();
 }
@@ -1705,10 +1645,8 @@ function setParametersRelatedToBackgroundSize() {
 }
 
 function addCarrot() {
-    //carrot = new createjs.Bitmap(queue.getResult('carrot'));
     carrotData = {
         images:[queue.getResult('carrotAll')],
-            //frames:{width:26, height:40, count:12, regX:0, regY:0},
         frames:[
             // x, y, width, height, imageIndex*, regX*, regY*
             [0,0,120,118],
@@ -1754,7 +1692,6 @@ function addList() {
     list = new List();
     list.src.visible = false;
     container.addChild(list.src);
-    //stopOrContinue();
 }
 
 function setControllers() {
@@ -1771,8 +1708,6 @@ function startGame() {
 function decreaseLife() {
     life--;
     carrot.updateLife(life);
-    // debug
-    // alert('life remain: ' + life);
 }
 
 function fail() {
@@ -1813,12 +1748,8 @@ function updateMonsters() {
             continue;
         }
 
-        // monster[i].src: the container containing monster bitmap and blood
-        // update blood
         monsters[i].updateBlood();
 
-        // let monster = monsters[i].src.getChildByName('monster');
-        // let center = monsters[i].src.localToLocal(monster.x, monster.y, container);
         let center = {x: monsters[i].src.x, y: monsters[i].src.y};
         // cell center
         let turningPoint = getNextTurningPoint(center.x, center.y);
@@ -1857,11 +1788,6 @@ function updateMonsters() {
         if (monsters[i].slowDownTimer === 180) monsters[i].speedUp();
         monsters[i].slowDownTimer++;
         i++;
-        // let monsterCell = calCell(pt.x, pt.y);
-        // if (monsterCell.row === land[land.length - 1].row && monsterCell.col === land[land.length - 1].col) {
-        //     container.removeChild(monsters[i].src);
-        //     monsters.splice(i, 1);
-        // }
     }
     if (monsterTimer === 60 || monsterTimer % 600 === 0) {
         if (monsterTimer / 300 % 3 === 0) {
@@ -1959,11 +1885,6 @@ function updateBullets() {
     }
     if (!shootBarrier) {
         for (let i = 0; i < bullets.length;) {
-            // if (almostEqual(eucDistance(bullets[i].src.x, bullets[i].src.y, bullets[i].targetCenter.x, bullets[i].targetCenter.y), 0)) {
-            //     container.removeChild(bullets[i].src);
-            //     bullets.splice(i, 1);
-            // }
-
             // out of stage
             let bulletBounds = bullets[i].src.getBounds();
             if (bullets[i].src.x < -bulletBounds.width / 2 || bullets[i].src.x > backgroundWidth + bulletBounds.width / 2 || bullets[i].src.y < -bulletBounds.height / 2 || bullets[i].y > backgroundHeight + bulletBounds.height / 2) {
@@ -1974,8 +1895,6 @@ function updateBullets() {
             // find closest monster
             let closest = null, closestDist = 10000000;
             for (let monsterContainer of monsters) {
-                // let monster = monsterContainer.src.getChildByName('monster');
-                // let monsterpt = monsterContainer.src.localToLocal(monster.x, monster.y, container);
                 let dist = eucDistance(bullets[i].src.x, bullets[i].src.y, monsterContainer.src.x, monsterContainer.src.y);
                 if (dist < closestDist) {
                     closestDist = dist;
@@ -1986,9 +1905,7 @@ function updateBullets() {
             // if hit the closest, remove this bullet
             if (closest && almostEqual(closestDist, 0)) {
                 let monster = closest.src.getChildByName('monster');
-                // let monsterpt = closest.src.localToLocal(monster.x, monster.y, container);
                 bullets[i].attack(closest);
-                // closest.blood -= bullets[i].power;
                 container.removeChild(bullets[i].src);
                 bullets.splice(i, 1);
                 continue;
@@ -2009,16 +1926,8 @@ function updateBullets() {
     }
 }
 
-function updateCarrot() {
-    /*
-    * 根据萝卜的命播放相应的动画*/
-}
-
 function updateNavbar() {
     navbar.coinText.text = coins.toString();
-}
-
-function deleteMonster(monster) {
 }
 
 // generate things
@@ -2050,12 +1959,12 @@ function generateMonster(type) {
 }
 
 function generateTerrain() {
-    let topX = terrainBound.leftTop.x, topY = terrainBound.leftTop.y, landLen = land.length, berrierNum = barrierCells.length;
+    let landLen = land.length;
     for (let i = 0;i < row;i++) {
         terrain[i] = new Array(col);
         for (let j = 0;j < col;j++) {
             let center = getTerrainCellCenter(i, j);
-            terrain[i][j] = new Cell('openSpace', 'available', center)// terrain[i][j] = {type: 'openSpace', status: 'available', center: center};
+            terrain[i][j] = new Cell('openSpace', 'available', center)
         }
     }
     for (let i = 0;i < landLen - 1;i++) {
@@ -2227,7 +2136,6 @@ function instanceShowInformation() {
 
 function instanceUpLevel() {
     this.instance.upLevel();
-    // this.off('click', this.upLevelListener);
     this.instance.hideInformation();
 }
 
@@ -2313,14 +2221,6 @@ function getTerrainCellCenter(r, c) {
     return {x: x, y: y};
 }
 
-function getLeftTopCoorinate(center, width, height) {
-    return {x: center.x - width / 2, y: center.y - height / 2};
-}
-
-function getCenterCoordinate(leftTop, width, height) {
-    return {x: leftTop.x + width / 2, y: leftTop.y + height / 2};
-}
-
 function calCell(x, y) {
     // return row&col of the given x&y coordinate
     let c = Math.floor((x - terrainBound.leftTop.x * backgroundWidth) / cellWidth);
@@ -2331,7 +2231,6 @@ function calCell(x, y) {
 function getNextTurningPoint(x, y) {
     // return result;
     let len = landPath.length;
-    let result = null;
     for (let i = 0;i < len - 1;i++) {
         if (almostEqual(x, landPath[i].x) && almostEqual(y, landPath[i].y)) {
             return landPath[i + 1];
