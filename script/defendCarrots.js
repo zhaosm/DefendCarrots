@@ -1244,7 +1244,7 @@ class BottleBullet extends Bullet {
         super(...args);
         let src = queue.getResult('bottleBullet_level' + level);
         this.src = new createjs.Bitmap(src);
-        this.speed = bottleBulletSpeed * level;
+        this.speed = bottleBulletSpeed;
         this.power = 25 + 5 * level;
     }
     setHitSpriteSheet() {
@@ -1278,7 +1278,7 @@ class Poo extends Bullet {
         super(...args);
         let src = queue.getResult('poo_level' + level);
         this.src = new createjs.Bitmap(src);
-        this.speed = pooSpeed * level;
+        this.speed = pooSpeed;
         this.power = 0.3 * level;
     }
     attack(monsterContainer) {
