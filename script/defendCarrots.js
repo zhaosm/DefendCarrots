@@ -1,6 +1,8 @@
 /**
  * Created by zhaoshangming on 17/7/24.
  */
+window.addEventListener('resize', resize, false);
+
 // global variables
 let $window = $(window);
 let stageWidth = $window.width();
@@ -13,7 +15,7 @@ $canvas.attr('height', stageHeight + "");
 //game status
 let status;//1=running 0=stop
 // background and containers
-let stage, queue, background, container;
+let stage, queue, background, container = null;
 let tempQueue;
 let carrot;
 // background size and scaleFactor
@@ -1505,6 +1507,18 @@ function prepareToStart() {
     startButton.y = 500;
     startButton.addEventListener('click', handleComplete);
     container.addChild(startButton);
+    stage.update();
+}
+
+function resize() {
+    if (!stage) return;
+    stage.canvas.width = window.innerWidth;
+    stage.canvas.height = window.innerHeight;
+
+    scaleFactor = Math.min(stage.canvas.width / backgroundWidth, stage.canvas.height / backgroundHeight);
+    container.scaleX = scaleFactor;
+    container.scaleY = scaleFactor;
+
     stage.update();
 }
 
