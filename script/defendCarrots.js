@@ -21,7 +21,7 @@ let backgroundWidth, backgroundHeight, scaleFactor = 0;
 // terrain sizes
 let cellWidth, cellHeight, row = 7, col = 12;
 // monsters, barriers and towers
-let monsterTimer = 0, towerTimer = 0, monsterSpeed = 2, monsterBlood = 100;// , speedFactor = 1;// speed: per second
+let monsterTimer = 0, towerTimer = 0, monsterSpeed = 2, monsterBlood = 100, barrierBlood = 200;// , speedFactor = 1;// speed: per second
 let monsters = [], towers = [], bullets = [];
 let bottleBulletSpeed, pooSpeed, towerRadius = 1000, towerUpgradeCost = 180, towerPrice = 100;
 let bloodWidth, bloodHeight;
@@ -203,7 +203,7 @@ class Deathbar{
         this.src.scaleY = 1.5;
 
         let transparentLayer = new createjs.Shape();
-        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth, backgroundHeight);
+        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth * scaleFactor, backgroundHeight * scaleFactor);
         transparentLayer.alpha = 0.3;
         transparentLayer.on('click', function(){});
         this.src.addChild(transparentLayer);
@@ -233,7 +233,7 @@ class List {
         this.src.scaleY = 1.5;
 
         let transparentLayer = new createjs.Shape();
-        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth, backgroundHeight);
+        transparentLayer.graphics.beginFill("#000000").drawRect(0, 0, backgroundWidth * scaleFactor, backgroundHeight * scaleFactor);
         transparentLayer.alpha = 0.3;
         transparentLayer.on('click', function(){});
         this.src.addChild(transparentLayer);
@@ -356,6 +356,7 @@ class Tower {
         this.levelIconNames = [];
         this.upLevelImg = null;
         this.priceImgNames = [];
+        this.base = null;
     }
     setLevelIconNames() {
     }
@@ -497,9 +498,50 @@ class Tower {
         this.radius = this.radius + cellWidth;
         coins -= this.upLevelPrices[this.level - 2];
         this.resetIcon(this.levelIconNames[this.level - 1]);
+        this.showUpLevelAnimation();
 
         // debug
         // alert(this.constructor.name + " uplevel, new level: " + this.level + ", coins remain: " + coins);
+    }
+    showUpLevelAnimation() {
+        let data = {
+            "images": [
+                queue.getResult('upLevelBaseSpriteSheet')
+            ],
+            "frames": [
+                [1, 1, 120, 76],
+                [123, 1, 120, 76],
+                [245, 1, 120, 76],
+                [367, 1, 120, 76]
+            ],
+            "animations": {
+                "upLevelBase": {
+                    "frames": [0, 1, 2, 3],
+                    'speed': .3
+                }
+            }
+        };
+        let animation = new createjs.Sprite(new createjs.SpriteSheet(data), 'upLevelBase');
+        let animationBounds = animation.getBounds();
+        animation.regX = animationBounds.width / 2;
+        animation.regY = animationBounds.height / 2;
+        animation.x = this.src.x;
+        animation.y = this.src.y + this.src.getBounds().height / 2;
+        animation.on('animationend', function() {
+            container.removeChild(this);
+        });
+        if (this.constructor.name === 'Bottle') container.addChildAt(animation, container.getChildIndex(this.base));
+        else container.addChildAt(animation, container.getChildIndex(this.src));
+
+        let upLevelLight = new createjs.Bitmap(queue.getResult('upLevelLight'));
+        let upLevelLightBounds = upLevelLight.getBounds();
+        upLevelLight.regX = upLevelLightBounds.width / 2;
+        upLevelLight.regY = upLevelLightBounds.height / 2;
+        upLevelLight.x = this.src.x;
+        upLevelLight.y = this.src.y + this.src.getBounds().height / 2 - upLevelLightBounds.height / 2;
+        createjs.Tween.get(upLevelLight, {loop: false})
+            .to({y: this.src.y - this.src.getBounds().height / 2, alpha: 0}, 600, createjs.Ease.getPowInOut(2));
+        container.addChild(upLevelLight);
     }
 }
 
@@ -521,6 +563,14 @@ class Bottle extends Tower{
         this.initAttackCircle();
 
         showExplodeAnimation.call(this);
+
+        this.base = new createjs.Bitmap(queue.getResult('bottleBase'));
+        let baseBounds = this.base.getBounds();
+        this.base.regX = baseBounds.width / 2;
+        this.base.regY = baseBounds.height / 2;
+        this.base.x = center.x;
+        this.base.y = center.y;
+        container.addChild(this.base);
     }
     setParameters() {
         super.setParameters();
@@ -572,6 +622,8 @@ class Sun extends Tower {
         //     }
         // };
         // this.spriteSheet = new createjs.SpriteSheet(data);
+        this.fireSpriteSheet = null;
+        this.setFireSpriteSheet();
 
         this.radius = this.attackSpriteSheets[0].getFrame(0).rect.width / 2;
 
@@ -656,6 +708,29 @@ class Sun extends Tower {
         };
         this.attackSpriteSheets.push(new createjs.SpriteSheet(data));
     }
+    setFireSpriteSheet() {
+        let data = {
+            "images": [
+                queue.getResult('sunFireSpriteSheet')
+            ],
+
+            "frames": [
+                [1, 1, 76, 56],
+                [79, 1, 76, 56],
+                [157, 1, 76, 56],
+                [235, 1, 76, 56],
+                [313, 1, 76, 56]
+            ],
+
+            "animations": {
+                "fire": {
+                    "frames": [0, 1, 2, 3, 4],
+                    'speed': .3
+                }
+            }
+        };
+        this.fireSpriteSheet = new createjs.SpriteSheet(data);
+    }
     setParameters() {
         super.setParameters();
         this.power = 20;
@@ -686,6 +761,17 @@ class Sun extends Tower {
         });
         container.addChild(animation);
         monsterContainer.blood -= this.power;
+
+        let fireAnimation = new createjs.Sprite(this.fireSpriteSheet, 'fire');
+        let fireAnimationBounds = fireAnimation.getBounds();
+        fireAnimation.regX = fireAnimationBounds.width / 2;
+        fireAnimation.regY = fireAnimationBounds.height / 2;
+        fireAnimation.x = monsterContainer.src.x;
+        fireAnimation.y = monsterContainer.src.y;
+        fireAnimation.on('animationend', function() {
+            container.removeChild(this);
+        });
+        container.addChild(fireAnimation);
     }
     upLevel() {
         super.upLevel();
@@ -810,7 +896,7 @@ class Monster {
     setBloodParameters(monsterBounds) {
         this.originBlood = monsterBlood;
         this.blood = this.originBlood;
-        this.bloodColor = "#21ff12";
+        this.bloodColor = "#0b8672";
         // this.bloodHeight = monsterBounds.height / 5;
         // this.bloodDist = monsterBounds.height / 5;
         this.bloodHeight = bloodHeight;
@@ -831,6 +917,7 @@ class Monster {
     createBlood(monsterBounds) {
         let blood = new createjs.Shape();
         blood.graphics.beginFill(this.bloodColor).drawRect(monsterBounds.width / 2 - this.bloodWidth / 2, 0, this.bloodWidth * this.blood / this.originBlood, this.bloodHeight);
+        blood.alpha = 0.6;
         // blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.bloodWidth, this.bloodHeight);
         blood.name = 'blood';
         return blood;
@@ -868,14 +955,7 @@ class Monster {
         });
         container.addChild(animation);
 
-        let value = new createjs.Bitmap(queue.getResult('value' + this.value));
-        value.x = this.src.x;
-        let originY = this.src.y - spriteBounds.height / 2 + value.getBounds().height / 2;
-        value.y = originY;
-        container.addChild(value);
-        createjs.Tween.get(value, {loop: false})
-            .to({y: originY - cellHeight * 0.3}, 600, createjs.Ease.getPowInOut(4))
-            .to({alpha: 0, y: originY - cellHeight * 0.5}, 400, createjs.Ease.getPowInOut(2))
+        showValue.call(this, spriteBounds);
     }
     slowDown(power) {
         if (this.isSlowDown) return;
@@ -890,6 +970,17 @@ class Monster {
         this.isSlowDown = false;
         this.src.removeChild(this.src.getChildByName('slowDown'));
     }
+}
+
+function showValue(spriteBounds) {
+    let value = new createjs.Bitmap(queue.getResult('value' + this.value));
+    value.x = this.src.x;
+    let originY = this.src.y - spriteBounds.height / 2 + value.getBounds().height / 2;
+    value.y = originY;
+    container.addChild(value);
+    createjs.Tween.get(value, {loop: false})
+        .to({y: originY - cellHeight * 0.3}, 600, createjs.Ease.getPowInOut(4))
+        .to({alpha: 0, y: originY - cellHeight * 0.5}, 400, createjs.Ease.getPowInOut(2))
 }
 
 class NormalMonster extends Monster {
@@ -1129,8 +1220,8 @@ class Barrier{
             this.clickToShootThis = !this.clickToShootThis;
         });
 
-        this.blood = 1;
-        this.bloodColor = "#21ff12";
+        this.blood = this.originBlood = barrierBlood;
+        this.bloodColor = "#0b8672";
         let blood = this.createBlood(iconBounds);
 
         this.src = new createjs.Container();
@@ -1162,8 +1253,9 @@ class Barrier{
     }
     createBlood(iconBounds) {
         let blood = new createjs.Shape();
-        blood.graphics.beginFill(this.bloodColor).drawRect(iconBounds.width / 2 - this.bloodWidth / 2, iconBounds.height / 4, this.bloodWidth * this.blood, this.bloodHeight);
+        blood.graphics.beginFill(this.bloodColor).drawRect(iconBounds.width / 2 - this.bloodWidth / 2, iconBounds.height / 4, this.bloodWidth * this.blood / this.originBlood, this.bloodHeight);
         // blood.graphics.beginFill(this.bloodColor).drawRect(0, 0, this.bloodWidth, this.bloodHeight);
+        blood.alpha = 0.6;
         blood.name = 'blood';
         return blood;
     }
@@ -1184,6 +1276,8 @@ class Barrier{
             container.removeChild(this);
         });
         container.addChild(animation);
+
+        showValue.call(this, spriteBounds);
 
         for (let cell of this.cells ){
             terrain[cell.row][cell.col].type = 'openSpace';
@@ -1348,7 +1442,11 @@ function init() {
         {src: 'image/pooHitSpriteSheet.png', id: 'pooHitSpriteSheet'},
         {src: 'image/sunAttack_level1_spriteSheet.png', id: 'sunAttack_level1_spriteSheet'},
         {src: 'image/sunAttack_level2_spriteSheet.png', id: 'sunAttack_level2_spriteSheet'},
-        {src: 'image/sunAttack_level3_spriteSheet.png', id: 'sunAttack_level3_spriteSheet'}
+        {src: 'image/sunAttack_level3_spriteSheet.png', id: 'sunAttack_level3_spriteSheet'},
+        {src: 'image/sunFireSpriteSheet.png', id: 'sunFireSpriteSheet'},
+        {src: 'image/upLevelBaseSpriteSheet.png', id: 'upLevelBaseSpriteSheet'},
+        {src: 'image/bottleBase.png', id: 'bottleBase'},
+        {src: 'image/upLevelLight.png', id: 'upLevelLight'}
     ];
     queue = new createjs.LoadQueue();
     queue.on('complete', prepareToStart);
@@ -1790,6 +1888,7 @@ function generateBarriers() {
         {row: 0, col: 5}
     ];
     let barrier = new Barrier(center, cells, 'smallStone');
+    barrier.value = 14;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
@@ -1801,6 +1900,7 @@ function generateBarriers() {
         {row: 3, col: 3}
     ];
     barrier = new Barrier(center, cells, 'largeTree');
+    barrier.value = 150;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
@@ -1812,29 +1912,33 @@ function generateBarriers() {
         {row: 4, col: 3},
     ];
     barrier = new Barrier(center, cells, 'largeTreasureBox');
+    barrier.value = 150;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
     center = getTerrainCellCenter(0, 6);
     cells = [{row: 0, col: 6}];
     barrier = new Barrier(center, cells, 'ladybug');
+    barrier.value = 14;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
     center = getTerrainCellCenter(2, 7);
     cells = [{row: 2, col: 7}];
     barrier = new Barrier(center, cells, 'smallTreasureBox1');
+    barrier.value = 75;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
-    center = {x: (getTerrainCellCenter(4, 6).x + getTerrainCellCenter(4, 7).x) / 2, y: (getTerrainCellCenter(3, 6).y + getTerrainCellCenter(4, 6).y) / 2};
+    center = {x: (getTerrainCellCenter(4, 6).x + getTerrainCellCenter(4, 7).x) / 2, y: (getTerrainCellCenter(5, 6).y + getTerrainCellCenter(4, 6).y) / 2};
     cells = [
-        {row: 3, col: 6},
-        {row: 3, col: 7},
+        {row: 5, col: 6},
+        {row: 5, col: 7},
         {row: 4, col: 6},
         {row: 4, col: 7}
     ];
     barrier = new Barrier(center, cells, 'windMill');
+    barrier.value = 150;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
@@ -1844,30 +1948,35 @@ function generateBarriers() {
         {row: 2, col: 9}
     ];
     barrier = new Barrier(center, cells, 'largeStone');
+    barrier.value = 50;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
     center = getTerrainCellCenter(4, 9);
     cells = [{row: 4, col: 9}];
     barrier = new Barrier(center, cells, 'smallTreasureBox2');
+    barrier.value = 75;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
     center = getTerrainCellCenter(0, 10);
     cells = [{row: 0, col: 10}];
     barrier = new Barrier(center, cells, 'stump');
+    barrier.value = 50;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
     center = getTerrainCellCenter(1, 11);
     cells = [{row: 1, col: 11}];
     barrier = new Barrier(center, cells, 'smallTree');
+    barrier.value = 14;
     container.addChild(barrier.src);
     barriers.push(barrier);
 
     center = getTerrainCellCenter(3, 11);
     cells = [{row: 3, col: 11}];
     barrier = new Barrier(center, cells, 'ladybug');
+    barrier.value = 14;
     container.addChild(barrier.src);
     barriers.push(barrier);
 }
