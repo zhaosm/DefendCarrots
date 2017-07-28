@@ -2,6 +2,9 @@
  * Created by zhaoshangming on 17/7/24.
  */
 window.addEventListener('resize', resize, false);
+window.addEventListener('touchmove', function(event){
+    event.preventDefault();
+});
 
 // global variables
 let $window = $(window);
